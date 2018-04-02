@@ -21,6 +21,7 @@ from scipy.stats import spearmanr, pearsonr
 
 from senteval.utils import cosine
 from senteval.sick import SICKRelatednessEval
+from senteval.tools.utils import process_sentence
 
 
 class STSEval(object):
@@ -150,21 +151,21 @@ class STS16Eval(STSEval):
 
 
 class STSBenchmarkEval(SICKRelatednessEval):
-    def __init__(self, task_path, seed=1111):
+    def __init__(self, task_path, max_seq_len, seed=1111):
         logging.debug('\n\n***** Transfer task : STSBenchmark*****\n\n')
         self.seed = seed
-        train = self.loadFile(os.path.join(task_path, 'sts-train.csv'))
-        dev = self.loadFile(os.path.join(task_path, 'sts-dev.csv'))
-        test = self.loadFile(os.path.join(task_path, 'sts-test.csv'))
+        train = self.loadFile(os.path.join(task_path, 'sts-train.csv'), max_seq_len)
+        dev = self.loadFile(os.path.join(task_path, 'sts-dev.csv'), max_seq_len)
+        test = self.loadFile(os.path.join(task_path, 'sts-test.csv'), max_seq_len)
         self.sick_data = {'train': train, 'dev': dev, 'test': test}
 
-    def loadFile(self, fpath):
+    def loadFile(self, fpath, max_seq_len):
         sick_data = {'X_A': [], 'X_B': [], 'y': []}
         with io.open(fpath, 'r', encoding='utf-8') as f:
             for line in f:
                 text = line.strip().split('\t')
-                sick_data['X_A'].append(text[5].split())
-                sick_data['X_B'].append(text[6].split())
+                sick_data['X_A'].append(process_sentence(text[5], max_seq_len))
+                sick_data['X_B'].append(process_sentence(text[6], max_seq_len))
                 sick_data['y'].append(text[4])
 
         sick_data['y'] = [float(s) for s in sick_data['y']]

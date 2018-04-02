@@ -19,8 +19,7 @@ PATH_TO_DATA = '../data/senteval_data/'
 PATH_TO_GLOVE = 'glove/glove.840B.300d.txt'
 INFERSENT_PATH = 'infersent.allnli.pickle'
 
-assert os.path.isfile(INFERSENT_PATH) and os.path.isfile(PATH_TO_GLOVE), \
-    'Set MODEL and GloVe PATHs'
+assert os.path.isfile(INFERSENT_PATH) and os.path.isfile(PATH_TO_GLOVE), 'Set MODEL and GloVe PATHs'
 
 # import senteval
 sys.path.insert(0, PATH_SENTEVAL)
@@ -44,7 +43,8 @@ Evaluation of trained model on Transfer Tasks (SentEval)
 """
 
 # define senteval params
-params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10}
+params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
+                   'max_seq_len': 50}
 params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
                                  'tenacity': 5, 'epoch_size': 4}
 # Set up logger
@@ -56,8 +56,6 @@ if __name__ == "__main__":
     params_senteval['infersent'].set_glove_path(PATH_TO_GLOVE)
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)
-    transfer_tasks = ['STS12', 'STS13', 'STS14', 'STS15', 'STS16',
-                      'MR', 'CR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
-                      'SICKEntailment', 'SICKRelatedness', 'STSBenchmark']
+    transfer_tasks = ['Warstadt']
     results = se.eval(transfer_tasks)
     print(results)

@@ -14,41 +14,42 @@ import os
 import logging
 import numpy as np
 import io
+from sklearn.metrics import f1_score
 
 from senteval.tools.validation import KFoldClassifier
-
-from sklearn.metrics import f1_score
+from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
 
 class MRPCEval(object):
-    def __init__(self, task_path, seed=1111):
+    def __init__(self, task_path, max_seq_len, seed=1111):
         logging.info('***** Transfer task : MRPC *****\n\n')
         self.seed = seed
-        train = self.loadFile(os.path.join(task_path,
-                              'msr_paraphrase_train.txt'))
-        test = self.loadFile(os.path.join(task_path,
-                             'msr_paraphrase_test.txt'))
+        train = self.loadFile(os.path.join(task_path, 'msr_paraphrase_train.txt'), max_seq_len)
+        test = self.loadFile(os.path.join(task_path, 'msr_paraphrase_test.txt'), max_seq_len)
+        #train = sort_split(self.loadFile(os.path.join(task_path, 'msr_paraphrase_train.txt'),
+        #                                 max_seq_len))
+        #test = sort_split(self.loadFile(os.path.join(task_path, 'msr_paraphrase_test.txt'),
+        #                                max_seq_len))
+        self.samples = train['X_A'] + train['X_B'] + test['X_A'] + test['X_B']
         self.mrpc_data = {'train': train, 'test': test}
 
     def do_prepare(self, params, prepare):
         # TODO : Should we separate samples in "train, test"?
-        samples = self.mrpc_data['train']['X_A'] + \
-                  self.mrpc_data['train']['X_B'] + \
-                  self.mrpc_data['test']['X_A'] + self.mrpc_data['test']['X_B']
-        return prepare(params, samples)
+        return prepare(params, self.samples)
 
-    def loadFile(self, fpath):
+    def loadFile(self, fpath, max_seq_len):
         mrpc_data = {'X_A': [], 'X_B': [], 'y': []}
         with io.open(fpath, 'r', encoding='utf-8') as f:
             for line in f:
                 text = line.strip().split('\t')
-                mrpc_data['X_A'].append(text[3].split())
-                mrpc_data['X_B'].append(text[4].split())
+                mrpc_data['X_A'].append(process_sentence(text[3], max_seq_len))
+                mrpc_data['X_B'].append(process_sentence(text[4], max_seq_len))
                 mrpc_data['y'].append(text[0])
 
         mrpc_data['X_A'] = mrpc_data['X_A'][1:]
         mrpc_data['X_B'] = mrpc_data['X_B'][1:]
         mrpc_data['y'] = [int(s) for s in mrpc_data['y'][1:]]
+        #return load_tsv(fpath, max_seq_len, s1_idx=3, s2_idx=4, targ_idx=0, skip_rows=1)
         return mrpc_data
 
     def run(self, params, batcher):

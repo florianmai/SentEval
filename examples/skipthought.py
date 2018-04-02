@@ -11,14 +11,15 @@ from __future__ import absolute_import, division, unicode_literals
 Example of file for SkipThought in SentEval
 """
 import logging
+import pdb
 import sys
-sys.setdefaultencoding('utf8')
+#sys.setdefaultencoding('utf8')
 
 
 # Set PATHs
 PATH_TO_SENTEVAL = '../'
 PATH_TO_DATA = '../data/senteval_data/'
-PATH_TO_SKIPTHOUGHT = ''
+PATH_TO_SKIPTHOUGHT = '/misc/vlgscratch4/BowmanGroup/awang/models/skip-thoughts/'
 
 assert PATH_TO_SKIPTHOUGHT != '', 'Download skipthought and set correct PATH'
 
@@ -33,9 +34,13 @@ def prepare(params, samples):
     return
 
 def batcher(params, batch):
-    batch = [str(' '.join(sent), errors="ignore") if sent != [] else '.' for sent in batch]
-    embeddings = skipthoughts.encode(params.encoder, batch,
-                                     verbose=False, use_eos=True)
+    #batch = [str(' '.join(sent), errors="ignore") if sent != [] else '.' for sent in batch]
+    try:
+        #encoded_batch = [' '.join(sent).encode('utf-8') if sent != [] else '.' for sent in batch]
+        encoded_batch = [' '.join(sent) if sent != [] else '.' for sent in batch]
+        embeddings = skipthoughts.encode(params['encoder'], encoded_batch, verbose=False, use_eos=True)
+    except:
+        pdb.set_trace()
     return embeddings
 
 
@@ -48,11 +53,10 @@ logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
     # Load SkipThought model
-    params_senteval.encoder = skipthoughts.load_model()
+    #params_senteval.encoder = skipthoughts.load_model()
+    params_senteval['encoder'] = skipthoughts.load_model()
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)
-    transfer_tasks = ['STS12', 'STS13', 'STS14', 'STS15', 'STS16',
-                      'MR', 'CR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
-                      'SICKEntailment', 'SICKRelatedness', 'STSBenchmark']
+    transfer_tasks = ['SNLI']
     results = se.eval(transfer_tasks)
     print(results)

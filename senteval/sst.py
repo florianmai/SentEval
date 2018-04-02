@@ -17,10 +17,11 @@ import logging
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier
+from senteval.tools.utils import process_sentence
 
 
 class SSTEval(object):
-    def __init__(self, task_path, nclasses=2, seed=1111):
+    def __init__(self, task_path, max_seq_len, nclasses=2, seed=1111):
         self.seed = seed
 
         # binary of fine-grained
@@ -29,28 +30,27 @@ class SSTEval(object):
         self.task_name = 'Binary' if self.nclasses == 2 else 'Fine-Grained'
         logging.debug('***** Transfer task : SST %s classification *****\n\n', self.task_name)
 
-        train = self.loadFile(os.path.join(task_path, 'sentiment-train'))
-        dev = self.loadFile(os.path.join(task_path, 'sentiment-dev'))
-        test = self.loadFile(os.path.join(task_path, 'sentiment-test'))
+        train = self.loadFile(os.path.join(task_path, 'sentiment-train'), max_seq_len)
+        dev = self.loadFile(os.path.join(task_path, 'sentiment-dev'), max_seq_len)
+        test = self.loadFile(os.path.join(task_path, 'sentiment-test'), max_seq_len)
+        self.samples = train['X'] + dev['X'] + test['X']
         self.sst_data = {'train': train, 'dev': dev, 'test': test}
 
     def do_prepare(self, params, prepare):
-        samples = self.sst_data['train']['X'] + self.sst_data['dev']['X'] + \
-                  self.sst_data['test']['X']
-        return prepare(params, samples)
+        return prepare(params, self.samples)
 
-    def loadFile(self, fpath):
+    def loadFile(self, fpath, max_seq_len):
         sst_data = {'X': [], 'y': []}
         with io.open(fpath, 'r', encoding='utf-8') as f:
             for line in f:
                 if self.nclasses == 2:
                     sample = line.strip().split('\t')
                     sst_data['y'].append(int(sample[1]))
-                    sst_data['X'].append(sample[0].split())
+                    sst_data['X'].append(process_sentence(sample[0], max_seq_len))
                 elif self.nclasses == 5:
                     sample = line.strip().split(' ', 1)
                     sst_data['y'].append(int(sample[0]))
-                    sst_data['X'].append(sample[1].split())
+                    sst_data['X'].append(process_sentence(sample[1], max_seq_len))
         assert max(sst_data['y']) == self.nclasses - 1
         return sst_data
 

@@ -10,42 +10,34 @@ SNLI - Entailment
 '''
 from __future__ import absolute_import, division, unicode_literals
 
-import codecs
 import os
-import io
 import copy
+import codecs
 import logging
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier
-from senteval.tools.utils import process_sentence
+from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
-
-class SNLIEval(object):
-    def __init__(self, taskpath, seed=1111):
-        logging.debug('***** Transfer task : SNLI Entailment*****\n\n')
+class MNLIEval(object):
+    def __init__(self, taskpath, max_seq_len=50, seed=1111):
+        logging.debug('***** Transfer task : MNLI Entailment*****\n\n')
         self.seed = seed
-        train1 = self.loadFile(os.path.join(taskpath, 's1.train'))
-        train2 = self.loadFile(os.path.join(taskpath, 's2.train'))
+        targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
+        #train1, train2, trainlabels = self.loadFile(os.path.join(taskpath, 'multinli_1.0_train.txt'), targ_map)
+        #valid1, valid2, validlabels = self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'))
+        #test1, test2, testlabels = self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'))
+        #test1, test2, testlabels = self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'))
 
-        trainlabels = io.open(os.path.join(taskpath, 'labels.train'),
-                              encoding='utf-8').read().splitlines()
-
-        valid1 = self.loadFile(os.path.join(taskpath, 's1.dev'))
-        valid2 = self.loadFile(os.path.join(taskpath, 's2.dev'))
-        validlabels = io.open(os.path.join(taskpath, 'labels.dev'),
-                              encoding='utf-8').read().splitlines()
-
-        test1 = self.loadFile(os.path.join(taskpath, 's1.test'))
-        test2 = self.loadFile(os.path.join(taskpath, 's2.test'))
-        testlabels = io.open(os.path.join(taskpath, 'labels.test'),
-                             encoding='utf-8').read().splitlines()
-
-        # also load adversarial examples
-        aux1, aux2, auxlabels = self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'))
-        test1, test2, testlabels = self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'))
+        train = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_train.txt'),
+                           max_seq_len, targ_map))
+        valid = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'),
+                           max_seq_len, targ_map))
+        test = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'),
+                          max_seq_len, targ_map))
 
         # sort data (by s2 first) to reduce padding
+        '''
         sorted_train = sorted(zip(train2, train1, trainlabels),
                               key=lambda z: (len(z[0]), len(z[1]), z[2]))
         train2, train1, trainlabels = map(list, zip(*sorted_train))
@@ -57,52 +49,30 @@ class SNLIEval(object):
         sorted_test = sorted(zip(test2, test1, testlabels),
                              key=lambda z: (len(z[0]), len(z[1]), z[2]))
         test2, test1, testlabels = map(list, zip(*sorted_test))
-
-        sorted_aux = sorted(zip(aux2, aux1, auxlabels),
-                            key=lambda z: (len(z[0]), len(z[1]), z[2]))
-        aux2, aux1, auxlabels = map(list, zip(*sorted_aux))
-
-        self.samples = train1 + train2 + valid1 + valid2 + test1 + test2 + aux1 + aux2
+        self.samples = train1 + train2 + valid1 + valid2 + test1 + test2
         self.data = {'train': (train1, train2, trainlabels),
                      'valid': (valid1, valid2, validlabels),
-                     'test': (test1, test2, testlabels),
-                     'aux': (aux1, aux2, auxlabels)
-                     }
+                     'test': (test1, test2, testlabels)}
+        '''
+
+        self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
+        self.data = {'train': train, 'valid': valid, 'test': test}
 
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
 
-    def loadFile(self, fpath):
-        with codecs.open(fpath, 'rb', 'latin-1') as f:
-            return [line.split() for line in
-                    f.read().splitlines()]
-
-    def loadAux(self, fpath):
+    def loadFile(self, fpath, max_seq_len, targ_map):
         '''Process the dataset located at path.'''
+        return load_tsv(fpath, max_seq_len, s1_idx=5, s2_idx=6, targ_idx=0,
+                        targ_map=targ_map, skip_rows=1)
 
-        sents1, sents2, targs = [], [], []
-        with codecs.open(fpath, 'r', 'latin-1') as fh:
-            fh.readline()
-            for row_idx, raw_datum in enumerate(fh):
-                raw_datum = raw_datum.split('\t')
-                sent1 = process_sentence(raw_datum[6])
-                sent2 = process_sentence(raw_datum[7])
-                targ = raw_datum[8].strip()
-                if targ in ['neutral', 'entailment', 'contradiction']:
-                    targs.append(targ)
-                else:
-                    #print("Invalid label %s" % targ)
-                    #print("Row %d: %s" % (row_idx, ' '.join(raw_datum)))
-                    continue
-                    #raise ValueError("Invalid label %s!" % targ)
-                sents1.append(sent1)
-                sents2.append(sent2)
-            assert len(sents1) == len(sents2) == len(targs)
-        return sents1, sents2, targs
+    def loadAux(self, fpath, max_seq_len, targ_map):
+        '''Process the dataset located at path.'''
+        return load_tsv(fpath, max_seq_len, s1_idx=6, s2_idx=7, targ_idx=8, targ_map=targ_map,
+                        skip_rows=1)
 
     def run(self, params, batcher):
         self.X, self.y = {}, {}
-        dico_label = {'entailment': 0,  'neutral': 1, 'contradiction': 2}
         for key in self.data:
             if key not in self.X:
                 self.X[key] = []
@@ -125,7 +95,8 @@ class SNLIEval(object):
                     logging.info("PROGRESS (encoding): %.2f%%" %
                                  (100 * ii / n_labels))
             self.X[key] = np.vstack(enc_input)
-            self.y[key] = [dico_label[y] for y in mylabels]
+            #self.y[key] = [dico_label[y] for y in mylabels]
+            self.y[key] = mylabels
 
         config = {'nclasses': 3, 'seed': self.seed,
                   'usepytorch': params.usepytorch,
@@ -139,10 +110,8 @@ class SNLIEval(object):
 
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc = clf.run()
-        logging.debug('Dev acc : {0} Test acc : {1} for SNLI\n'
+        logging.debug('Dev acc : {0} Test acc : {1} for MNLI\n'
                       .format(devacc, testacc))
-        #auxacc = clf.score(self.X['aux'], self.y['aux'])
-        #logging.debug('Aux acc: {0}\n'.format(round(100*auxacc, 2)))
         return {'devacc': devacc, 'acc': testacc,
                 'ndev': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}
