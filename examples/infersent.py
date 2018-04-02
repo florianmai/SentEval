@@ -6,11 +6,11 @@
 #
 
 from __future__ import absolute_import, division, unicode_literals
-
 import sys
 import os
 import torch
 import logging
+import argparse
 
 
 # Set PATHs
@@ -37,20 +37,28 @@ def batcher(params, batch):
                                          tokenize=False)
     return embeddings
 
-
-"""
-Evaluation of trained model on Transfer Tasks (SentEval)
-"""
-
-# define senteval params
-params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
-                   'max_seq_len': 50}
-params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
-                                 'tenacity': 5, 'epoch_size': 4}
 # Set up logger
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__,
+                    formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int,
+            default=1)
+    parser.add_argument("--log_file", help="File to log to", type=str)
+    parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
+    parser.add_argument("--small", help="Use small training data if available", type=int, default=1)
+    parser.add_argument("--lower", help="Lower case data", type=int, default=0)
+
+    args = parser.parse_args(arguments)
+
+    # define senteval params
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
+                       'max_seq_len': 50}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
+                                     'tenacity': 5, 'epoch_size': 4}
+
     # Load InferSent model
     params_senteval['infersent'] = torch.load(INFERSENT_PATH)
     params_senteval['infersent'].set_glove_path(PATH_TO_GLOVE)

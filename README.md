@@ -2,6 +2,10 @@
 
 SentEval is a library for evaluating the quality of sentence embeddings. We assess their generalization power by using them as features on a broad and diverse set of "transfer" tasks. **SentEval currently includes 17 tasks**. Our goal is to ease the study and the development of general-purpose fixed-size sentence representations.
 
+**W4ngatang changes (04/02):**
+1. add more tasks
+2. standardize preprocessing with a process_sentence function
+3. add more examples with different models and add cmdline arguments to examples
 
 **SentEval recent fixes (12/26):**
 1. renamed main directory: new way to import SentEval (see below)
