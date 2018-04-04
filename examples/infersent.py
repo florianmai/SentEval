@@ -50,10 +50,10 @@ def main(arguments):
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
 
     # Model options
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=32)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
 
     # Classifier options
-    parser.add_argument("--cls_batch_size", help="Batch size to use", type=int, default=32)
+    parser.add_argument("--cls_batch_size", help="Batch size to use", type=int, default=16)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)

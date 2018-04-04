@@ -92,16 +92,13 @@ class MNLIEval(object):
                     enc_input.append(np.hstack((enc1, enc2, enc1 * enc2,
                                                 np.abs(enc1 - enc2))))
                 if (ii*params.batch_size) % (20000*params.batch_size) == 0:
-                    logging.info("PROGRESS (encoding): %.2f%%" %
-                                 (100 * ii / n_labels))
+                    logging.info("PROGRESS (encoding): %.2f%%" % (100 * ii / n_labels))
+            logging.debug("Finished encoding MNLI")
             self.X[key] = np.vstack(enc_input)
-            #self.y[key] = [dico_label[y] for y in mylabels]
             self.y[key] = mylabels
 
-        config = {'nclasses': 3, 'seed': self.seed,
-                  'usepytorch': params.usepytorch,
-                  'cudaEfficient': True,
-                  'nhid': params.nhid, 'noreg': True}
+        config = {'nclasses': 3, 'seed': self.seed, 'usepytorch': params.usepytorch,
+                  'cudaEfficient': True, 'nhid': params.nhid, 'noreg': True}
 
         config_classifier = copy.deepcopy(params.classifier)
         config_classifier['max_epoch'] = 15
@@ -109,6 +106,7 @@ class MNLIEval(object):
         config['classifier'] = config_classifier
 
         clf = SplitClassifier(self.X, self.y, config)
+        logging.debug("Built classifier, starting training")
         devacc, testacc = clf.run()
         logging.debug('Dev acc : {0} Test acc : {1} for MNLI\n'.format(devacc, testacc))
         return {'devacc': devacc, 'acc': testacc,
