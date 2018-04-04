@@ -110,8 +110,7 @@ class MNLIEval(object):
 
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc = clf.run()
-        logging.debug('Dev acc : {0} Test acc : {1} for MNLI\n'
-                      .format(devacc, testacc))
+        logging.debug('Dev acc : {0} Test acc : {1} for MNLI\n'.format(devacc, testacc))
         return {'devacc': devacc, 'acc': testacc,
                 'ndev': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}

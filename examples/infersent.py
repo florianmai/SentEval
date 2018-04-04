@@ -17,7 +17,7 @@ from utils import get_tasks
 # Set PATHs
 PATH_SENTEVAL = '../'
 PATH_TO_DATA = '../data/senteval_data/'
-PATH_TO_GLOVE = 'glove/glove.840B.300d.txt'
+PATH_TO_GLOVE = '/beegfs/aw3272/raw_data/GloVe/glove.840B.300d.txt'
 INFERSENT_PATH = 'infersent.allnli.pickle'
 
 assert os.path.isfile(INFERSENT_PATH) and os.path.isfile(PATH_TO_GLOVE), 'Set MODEL and GloVe PATHs'
@@ -42,26 +42,36 @@ def main(arguments):
     # Logistics
     parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
-    parser.add_argument("--log_file", help="File to log to", type=str)
+    parser.add_argument("--log_file", help="File to log to", type=str,
+                        default='/beegfs/aw3272/ckpts/SentEval/infersent/log.log')
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
-    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
+
+    # Model options
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=32)
+
+    # Classifier options
+    parser.add_argument("--cls_batch_size", help="Batch size to use", type=int, default=32)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+    if args.log_file:
+        fileHandler = logging.FileHandler(args.log_file)
+        logging.getLogger().addHandler(fileHandler)
 
     # define senteval params
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
-                       'max_seq_len': args.max_seq_len}
-    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.batch_size,
+                       'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
 
     # Load InferSent model
     params_senteval['infersent'] = torch.load(INFERSENT_PATH)
     params_senteval['infersent'].set_glove_path(PATH_TO_GLOVE)
 
+    # Do SentEval stuff
     se = senteval.engine.SE(params_senteval, batcher, prepare)
     tasks = get_tasks(args.tasks)
     results = se.eval(tasks)

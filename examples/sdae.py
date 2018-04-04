@@ -54,15 +54,12 @@ def main(arguments):
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+    fileHandler = logging.FileHandler(args.log_file)
+    logging.getLogger().addHandler(fileHandler)
 
     # Set params for SentEval
     params_senteval = {'usepytorch': True, 'task_path': PATH_TO_DATA, 'batch_size': args.batch_size}
     params_senteval = dotdict(params_senteval)
-
-    # Set up logger
-    logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
-    fileHandler = logging.FileHandler(args.log_file)
-    logging.getLogger().addHandler(fileHandler)
 
     # Build model
     use_preemb = False

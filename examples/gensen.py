@@ -8,14 +8,21 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import os
 import pdb
 import sys
 import torch
 import logging
 import argparse
+from utils import get_tasks
+
+if "cs.nyu.edu" in os.uname()[1]:
+    PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
+else:
+    PATH_PREFIX = '/beegfs/aw3272/'
 
 # Set PATHs
-PATH_GENSEN = '/misc/vlgscratch4/BowmanGroup/awang/models/GenSen-master/'
+PATH_GENSEN = PATH_PREFIX + '/models/GenSen-master/'
 PATH_SENTEVAL = '../'
 PATH_TO_DATA = '../data/senteval_data/'
 
@@ -67,7 +74,8 @@ def main(arguments):
     # Logistics
     parser.add_argument("--gpu_id", help="gpu id to use", type=int, default=0)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
-    parser.add_argument("--log_file", help="File to log to", type=str)
+    parser.add_argument("--log_file", help="File to log to", type=str,
+                        default='/beegfs/aw3272/ckpts/SentEval/gensen/log.log')
     parser.add_argument("--folder_path", help="path to model folder", default=PATH_GENSEN + 'data/models')
     parser.add_argument("--prefix_1", help="prefix to model 1", default='nli_large_bothskip_parse')
     parser.add_argument("--prefix_2", help="prefix to model 2", default='nli_large_bothskip')
@@ -78,17 +86,26 @@ def main(arguments):
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
-    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
+
+    # Model options
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=32)
+
+    # Classifier options
+    parser.add_argument("--cls_batch_size", help="Batch size to use for the classifier", type=int,
+                        default=32)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+    if args.log_file:
+        fileHandler = logging.FileHandler(args.log_file)
+        logging.getLogger().addHandler(fileHandler)
     torch.cuda.set_device(args.gpu_id)
 
     # Set up SentEval
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
-                       'max_seq_len': args.max_seq_len}
-    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.batch_size,
+                       'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
 
     # Load model
@@ -101,9 +118,10 @@ def main(arguments):
     STRATEGY = args.strategy
     params_senteval['gensen'] = gensen
 
+    # Do SentEval stuff
     se = senteval.engine.SE(params_senteval, batcher, prepare)
-    transfer_tasks = args.tasks.split(',')
-    results = se.eval(transfer_tasks)
+    tasks = get_tasks(args.tasks)
+    results = se.eval(tasks)
     print(results)
 
 if __name__ == "__main__":

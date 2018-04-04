@@ -52,19 +52,26 @@ def main(arguments):
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
-    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=512)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
+
+    # Model options
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=32)
+
+    # Classifier options
+    parser.add_argument("--cls_batch_size", help="Batch size to use for classifier", type=int, default=32)
 
     args = parser.parse_args(arguments)
-
-    # Set params for SentEval
-    params_senteval = {'usepytorch': True, 'task_path': PATH_TO_DATA, 'batch_size': args.batch_size}
-    params_senteval = dotdict(params_senteval)
-
-    # Set up logger
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
     fileHandler = logging.FileHandler(args.log_file)
     logging.getLogger().addHandler(fileHandler)
+
+    # Set params for SentEval
+    params_senteval = {'usepytorch': True, 'task_path': PATH_TO_DATA,
+                       'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
+                                     'tenacity': 5, 'epoch_size': 4}
+    params_senteval = dotdict(params_senteval)
+
 
     with open(args.dict_file, 'rb') as fh:
         data = pkl.load(fh)
@@ -77,8 +84,9 @@ def main(arguments):
     params_senteval.word2idx = word2idx
 
     se = senteval.SentEval(params_senteval, batcher, prepare)
-    transfer_tasks = args.tasks.split(',')
-    se.eval(tasks)
+    tasks = args.tasks.split(',')
+    results = se.eval(tasks)
+    print(results)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

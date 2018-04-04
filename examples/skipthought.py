@@ -58,8 +58,13 @@ def main(arguments):
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
-    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
+
+    # Model options
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=32)
+
+    # Classifier options
+    parser.add_argument("--cls_batch_size", help="Batch size to use for classifiers", type=int, default=32)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
@@ -67,7 +72,7 @@ def main(arguments):
     # Set params for SentEval
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
                        'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
-    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.batch_size,
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
     params_senteval['encoder'] = skipthoughts.load_model()
 

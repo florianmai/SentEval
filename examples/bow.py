@@ -59,21 +59,28 @@ def main(arguments):
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
-    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
+
+    # Model options
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=32)
+
+    # Classifier options
+    parser.add_argument("--cls_batch_size", help="Batch size to use for classifier", type=int, default=32)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+    fileHandler = logging.FileHandler(args.log_file)
+    logging.getLogger().addHandler(fileHandler)
 
     # SentEval params
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
-                       'max_seq_len': args.max_seq_len}
-    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.batch_size,
+                       'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)
-    transfer_tasks = args.tasks.split(',')
-    results = se.eval(transfer_tasks)
+    tasks = args.tasks.split(',')
+    results = se.eval(tasks)
     print(results)
 
 if __name__ == "__main__":
