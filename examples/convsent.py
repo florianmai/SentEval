@@ -35,7 +35,7 @@ def batcher(params, batch):
 
     batch = [words2idx(sent) for sent in batch]
     embeddings = convsent.encode(params.encoder, batch, len(word2idx))
-                                 #[' '.join(sent).strip() if sent != [] 
+                                 #[' '.join(sent).strip() if sent != []
                                  #else '.' for sent in batch])
     return np.array(embeddings).squeeze()
 
@@ -43,24 +43,22 @@ def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__,
                     formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("--use_pytorch", help="1 to use PyTorch", 
-                        type=int, default=1)
+    # Logistics
+    parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
+    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
     parser.add_argument("--log_file", help="File to log to", type=str)
-    parser.add_argument("--model_file", help="File to load model from", 
-                        type=str)
-    parser.add_argument("--dict_file", help="File to load dict from", 
-                        type=str)
-    parser.add_argument("--small", help="Use small training data if"\
-                                        "available", type=int, default=1)
-    parser.add_argument("--lower", help="Lower case data", type=int, 
-                        default=0)
+    parser.add_argument("--model_file", help="File to load model from", type=str)
+    parser.add_argument("--dict_file", help="File to load dict from", type=str)
+
+    # Task options
+    parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=512)
 
     args = parser.parse_args(arguments)
 
     # Set params for SentEval
-    params_senteval = {'usepytorch': True,
-                       'task_path': PATH_TO_DATA,
-                       'batch_size': 512}
+    params_senteval = {'usepytorch': True, 'task_path': PATH_TO_DATA, 'batch_size': args.batch_size}
     params_senteval = dotdict(params_senteval)
 
     # Set up logger
@@ -74,19 +72,13 @@ def main(arguments):
     word2idx['<pad>'] = len(word2idx)
     n_words = len(word2idx)
 
-    params_senteval.encoder = convsent.load_model(args.model_file,
-                                                  n_words=n_words)
+    # Load model
+    params_senteval.encoder = convsent.load_model(args.model_file, n_words=n_words)
     params_senteval.word2idx = word2idx
 
     se = senteval.SentEval(params_senteval, batcher, prepare)
-    '''
-    tasks = ['MR', 'CR', 'SUBJ', 'MPQA', 'SST', 
-             'TREC', 'SICKRelatedness','SICKEntailment', 
-             'MRPC', 'STS14', 'SQuAD', 'Quora', 'Reasoning']
-    '''
-    tasks = ['Reasoning']
-
-    se.eval(tasks, small=args.small, lower=args.lower)
+    transfer_tasks = args.tasks.split(',')
+    se.eval(tasks)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

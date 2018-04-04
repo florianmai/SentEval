@@ -50,3 +50,8 @@ def sort_split(split):
     else:
         sort_key = lambda x: (len(x[0]),  x[1])
     return map(list, zip(*sorted(zip(*split), key=sort_key)))
+
+def get_tasks(inp_str):
+    '''Get the tasks given a comma separated list'''
+    tasks = inp_str.split(',')
+    return tasks

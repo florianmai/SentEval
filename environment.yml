@@ -1,4 +1,4 @@
-name: sent_eval
+name: senteval
 dependencies:
 - python=2.7
 - pytorch>=0.2

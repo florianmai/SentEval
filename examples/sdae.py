@@ -29,7 +29,7 @@ def prepare(params, samples):
 
 def batcher(params, batch):
     embeddings = sdae.encode(params.encoder,
-                             [' '.join(sent).strip() if sent != [] 
+                             [' '.join(sent).strip() if sent != []
                                  else '.' for sent in batch],
                              params.worddict, params.model_options,
                              params.wv_embs)
@@ -38,26 +38,25 @@ def batcher(params, batch):
 def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__,
                     formatter_class=argparse.RawDescriptionHelpFormatter)
-
-    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int,
-            default=1)
+    # Logistics
+    parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
+    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
     parser.add_argument("--log_file", help="File to log to", type=str)
-    parser.add_argument("--model_file", help="File to load model from", 
-                        type=str)
+    parser.add_argument("--model_file", help="File to load model from", type=str)
     parser.add_argument("--dictionary", help="File to log to", type=str,
                         default='/misc/vlgscratch4/BowmanGroup/awang/data/wikipedia/wiki_lower_small.txt.dict.pkl')
-    parser.add_argument("--emb_file", 
-                        help="File to load pretrained embeddings from", 
-                        type=str, default='')
-    parser.add_argument("--small", help="Use small training data if available", type=int, default=1)
-    parser.add_argument("--lower", help="Lower case data", type=int, default=0)
+    parser.add_argument("--emb_file", help="File to load pretrained embeddings from", type=str, default='')
+
+    # Task options
+    parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
 
     args = parser.parse_args(arguments)
+    logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
     # Set params for SentEval
-    params_senteval = {'usepytorch': True,
-                       'task_path': PATH_TO_DATA,
-                       'batch_size': 512}
+    params_senteval = {'usepytorch': True, 'task_path': PATH_TO_DATA, 'batch_size': args.batch_size}
     params_senteval = dotdict(params_senteval)
 
     # Set up logger
@@ -65,11 +64,12 @@ def main(arguments):
     fileHandler = logging.FileHandler(args.log_file)
     logging.getLogger().addHandler(fileHandler)
 
+    # Build model
     use_preemb = False
     if args.emb_file:
         use_preemb = True
     model, model_options, worddict, wv_embs = \
-            sdae.load_model(saveto=args.model_file, 
+            sdae.load_model(saveto=args.model_file,
                             dictionary=args.dictionary,
                             embeddings=args.emb_file,
                             reload_=True, use_preemb=use_preemb)
@@ -77,15 +77,11 @@ def main(arguments):
     params_senteval.model_options = model_options
     params_senteval.worddict = worddict
     params_senteval.wv_embs = wv_embs
-    se = senteval.SentEval(params_senteval, batcher, prepare)
-    '''
-    tasks = ['MR', 'CR', 'SUBJ', 'MPQA', 'SST', 
-             'TREC', 'SICKRelatedness','SICKEntailment', 
-             'MRPC', 'STS14', 'SQuAD', 'Reasoning']
-    '''
-    tasks = ['Reasoning']
 
-    se.eval(tasks, small=args.small, lower=args.lower)
+    se = senteval.SentEval(params_senteval, batcher, prepare)
+    tasks = args.tasks.split(',')
+    results = se.eval(tasks)
+    print(results)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

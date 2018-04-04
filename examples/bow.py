@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, unicode_literals
 import sys
 import numpy as np
 import logging
+import argparse
 
 import data
 
@@ -47,23 +48,33 @@ def batcher(params, batch):
     embeddings = np.vstack(embeddings)
     return embeddings
 
+def main(arguments):
+    parser = argparse.ArgumentParser(description=__doc__,
+                    formatter_class=argparse.RawDescriptionHelpFormatter)
 
-# Set params for SentEval
-params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10}
-params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
-                                 'tenacity': 5, 'epoch_size': 4}
+    # Logistics
+    parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
+    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
+    parser.add_argument("--log_file", help="File to log to", type=str)
 
-# Set up logger
-logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+    # Task options
+    parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
 
-if __name__ == "__main__":
+    args = parser.parse_args(arguments)
+    logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+
+    # SentEval params
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
+                       'max_seq_len': args.max_seq_len}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.batch_size,
+                                     'tenacity': 5, 'epoch_size': 4}
+
     se = senteval.engine.SE(params_senteval, batcher, prepare)
-    '''
-    transfer_tasks = ['STS12', 'STS13', 'STS14', 'STS15', 'STS16',
-                      'MR', 'CR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
-                      'SICKEntailment', 'SICKRelatedness', 'STSBenchmark']
-    '''
-    transfer_tasks = ['MNLI', 'SQuAD', 'RTE', 'Quora']
-    transfer_tasks = ['Quora']
+    transfer_tasks = args.tasks.split(',')
     results = se.eval(transfer_tasks)
     print(results)
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

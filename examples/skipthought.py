@@ -45,33 +45,36 @@ def batcher(params, batch):
     return embeddings
 
 
-
-if __name__ == "__main__":
+def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__,
                     formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int,
-            default=1)
+    # Logistics
+    parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
+    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
     parser.add_argument("--log_file", help="File to log to", type=str)
-    parser.add_argument("--dict_file", help="File to load dict from",
-                        type=str)
-    parser.add_argument("--model_file", help="File to load model from",
-                        type=str)
-    parser.add_argument("--small", help="Use small training data if available", type=int, default=1)
-    parser.add_argument("--lower", help="Lower case data", type=int, default=0)
+    parser.add_argument("--dict_file", help="File to load dict from", type=str)
+    parser.add_argument("--model_file", help="File to load model from", type=str)
+
+    # Task options
+    parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
 
     args = parser.parse_args(arguments)
-
-    # Set up logger
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
     # Set params for SentEval
-    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10, 'batch_size': 512}
-    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
+                       'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
     params_senteval['encoder'] = skipthoughts.load_model()
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)
-    transfer_tasks = ['SNLI']
-    results = se.eval(transfer_tasks)
+    tasks = args.tasks.split(',')
+    results = se.eval(tasks)
     print(results)
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))

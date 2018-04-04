@@ -8,9 +8,10 @@
 from __future__ import absolute_import, division, unicode_literals
 import sys
 import os
-import torch
 import logging
 import argparse
+import torch
+from utils import get_tasks
 
 
 # Set PATHs
@@ -25,38 +26,36 @@ assert os.path.isfile(INFERSENT_PATH) and os.path.isfile(PATH_TO_GLOVE), 'Set MO
 sys.path.insert(0, PATH_SENTEVAL)
 import senteval
 
-
 def prepare(params, samples):
-    params.infersent.build_vocab([' '.join(s) for s in samples],
-                                 tokenize=False)
-
+    params.infersent.build_vocab([' '.join(s) for s in samples], tokenize=False)
 
 def batcher(params, batch):
     sentences = [' '.join(s) for s in batch]
-    embeddings = params.infersent.encode(sentences, bsize=params.batch_size,
-                                         tokenize=False)
+    embeddings = params.infersent.encode(sentences, bsize=params.batch_size, tokenize=False)
     return embeddings
 
-# Set up logger
-logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
-if __name__ == "__main__":
+def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__,
                     formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int,
-            default=1)
-    parser.add_argument("--log_file", help="File to log to", type=str)
+    # Logistics
     parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
-    parser.add_argument("--small", help="Use small training data if available", type=int, default=1)
-    parser.add_argument("--lower", help="Lower case data", type=int, default=0)
+    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
+    parser.add_argument("--log_file", help="File to log to", type=str)
+
+    # Task options
+    parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=50)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
 
     args = parser.parse_args(arguments)
+    logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
     # define senteval params
-    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
-                       'max_seq_len': 50}
-    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
+                       'max_seq_len': args.max_seq_len}
+    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
 
     # Load InferSent model
@@ -64,6 +63,9 @@ if __name__ == "__main__":
     params_senteval['infersent'].set_glove_path(PATH_TO_GLOVE)
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)
-    transfer_tasks = ['Warstadt']
-    results = se.eval(transfer_tasks)
+    tasks = get_tasks(args.tasks)
+    results = se.eval(tasks)
     print(results)
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -1,8 +1,6 @@
 from __future__ import absolute_import, division, unicode_literals
 
-"""
-Example of file to compare skipthought vectors with our InferSent model
-"""
+""" Evaluate FastSent (Hill et al., 2016) on SentEval """
 import os
 import sys
 import pdb
@@ -44,14 +42,14 @@ def batcher(params, batch):
                                      verbose=False, use_eos=True)
     '''
 
-    embeddings = [params.encoder[' '.join([w for w in sent if w in 
-                                           params.encoder.vocab])] for sent 
+    embeddings = [params.encoder[' '.join([w for w in sent if w in
+                                           params.encoder.vocab])] for sent
                                            in batch]
 
     #fracs_in_vocab = np.array([sum([1 for w in sent if w.lower() in params.encoder.vocab]) / float(len(sent)) for sent in batch])
     #n_all_zeros = sum([1 for emb in embeddings if emb.size == 1])
 
-    embeddings = [np.zeros(params.encoder.vector_size) if emb.size == 1 
+    embeddings = [np.zeros(params.encoder.vector_size) if emb.size == 1
                   else emb for emb in embeddings]
 
     try:
@@ -67,7 +65,7 @@ def main(arguments):
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int,
             default=1)
     parser.add_argument("--log_file", help="File to log to", type=str)
-    parser.add_argument("--model_file", help="File containing trained model", 
+    parser.add_argument("--model_file", help="File containing trained model",
                         type=str)
     parser.add_argument("--small", help="Use small training data if available", type=int, default=1)
     parser.add_argument("--lower", help="Lower case data", type=int, default=0)
@@ -89,8 +87,8 @@ def main(arguments):
     params_senteval.encoder = FastSent.load(args.model_file)
     se = senteval.SentEval(params_senteval, batcher, prepare)
     '''
-    tasks = ['MR', 'CR', 'SUBJ', 'MPQA', 'SST', 'TREC', 
-             'SICKRelatedness', 'SICKEntailment', 'MRPC', 
+    tasks = ['MR', 'CR', 'SUBJ', 'MPQA', 'SST', 'TREC',
+             'SICKRelatedness', 'SICKEntailment', 'MRPC',
              'STS14', 'SQuAD', 'Quora']
     '''
     tasks = ['Quora', 'Reasoning']
