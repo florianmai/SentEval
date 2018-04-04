@@ -14,48 +14,24 @@ import os
 import copy
 import codecs
 import logging
+import cPickle as pkl
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
 class ANLIEval(object):
-    def __init__(self, taskpath, max_seq_len=50, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data,  seed=1111):
         logging.debug('***** Transfer task : ANLI Entailment*****\n\n')
         self.seed = seed
         targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
-        #train1, train2, trainlabels = self.loadFile(os.path.join(taskpath, 'multinli_1.0_train.txt'), targ_map)
-        #valid1, valid2, validlabels = self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'))
-        #test1, test2, testlabels = self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'))
-        #test1, test2, testlabels = self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'))
-
         train = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_train.txt'),
-                           max_seq_len, targ_map))
+                           max_seq_len, targ_map, load_data))
         valid = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'),
-                           max_seq_len, targ_map))
-        #test = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'),
-        #                  max_seq_len, targ_map))
+                           max_seq_len, targ_map, load_data))
         test = sort_split(self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'),
-                          max_seq_len, targ_map))
+                          max_seq_len, targ_map, load_data))
 
-        # sort data (by s2 first) to reduce padding
-        '''
-        sorted_train = sorted(zip(train2, train1, trainlabels),
-                              key=lambda z: (len(z[0]), len(z[1]), z[2]))
-        train2, train1, trainlabels = map(list, zip(*sorted_train))
-
-        sorted_valid = sorted(zip(valid2, valid1, validlabels),
-                              key=lambda z: (len(z[0]), len(z[1]), z[2]))
-        valid2, valid1, validlabels = map(list, zip(*sorted_valid))
-
-        sorted_test = sorted(zip(test2, test1, testlabels),
-                             key=lambda z: (len(z[0]), len(z[1]), z[2]))
-        test2, test1, testlabels = map(list, zip(*sorted_test))
-        self.samples = train1 + train2 + valid1 + valid2 + test1 + test2
-        self.data = {'train': (train1, train2, trainlabels),
-                     'valid': (valid1, valid2, validlabels),
-                     'test': (test1, test2, testlabels)}
-        '''
 
         self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
         self.data = {'train': train, 'valid': valid, 'test': test}
@@ -63,15 +39,29 @@ class ANLIEval(object):
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
 
-    def loadFile(self, fpath, max_seq_len, targ_map):
+    def loadFile(self, fpath, max_seq_len, targ_map, load_data):
         '''Process the dataset located at path.'''
-        return load_tsv(fpath, max_seq_len, s1_idx=5, s2_idx=6, targ_idx=0,
-                        targ_map=targ_map, skip_rows=1)
+        if os.path.exists(fpath + '.pkl') and load_data:
+            data = pkl.load(open(fpath + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", fpath + '.pkl')
+        else:
+            data = load_tsv(fpath, max_seq_len, s1_idx=5, s2_idx=6, targ_idx=0,
+                            targ_map=targ_map, skip_rows=1)
+            pkl.dump(data, open(fpath + '.pkl', 'wb'))
+            logging.info("Saved data to %s", fpath + '.pkl')
+        return data
 
-    def loadAux(self, fpath, max_seq_len, targ_map):
+    def loadAux(self, fpath, max_seq_len, targ_map, load_data):
         '''Process the dataset located at path.'''
-        return load_tsv(fpath, max_seq_len, s1_idx=6, s2_idx=7, targ_idx=8, targ_map=targ_map,
-                        skip_rows=1)
+        if os.path.exists(fpath + '.pkl') and load_data:
+            data = pkl.load(open(fpath + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", fpath + '.pkl')
+        else:
+            data = load_tsv(fpath, max_seq_len, s1_idx=6, s2_idx=7, targ_idx=8,
+                            targ_map=targ_map, skip_rows=1)
+            pkl.dump(data, open(fpath + '.pkl', 'wb'))
+            logging.info("Saved data to %s", fpath + '.pkl')
+        return data
 
     def run(self, params, batcher):
         self.X, self.y = {}, {}

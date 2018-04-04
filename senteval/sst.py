@@ -14,6 +14,7 @@ from __future__ import absolute_import, division, unicode_literals
 import os
 import io
 import logging
+import cPickle as pkl
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier
@@ -21,7 +22,7 @@ from senteval.tools.utils import process_sentence
 
 
 class SSTEval(object):
-    def __init__(self, task_path, max_seq_len, nclasses=2, seed=1111):
+    def __init__(self, task_path, max_seq_len, load_data, nclasses=2, seed=1111):
         self.seed = seed
 
         # binary of fine-grained
@@ -30,28 +31,34 @@ class SSTEval(object):
         self.task_name = 'Binary' if self.nclasses == 2 else 'Fine-Grained'
         logging.debug('***** Transfer task : SST %s classification *****\n\n', self.task_name)
 
-        train = self.loadFile(os.path.join(task_path, 'sentiment-train'), max_seq_len)
-        dev = self.loadFile(os.path.join(task_path, 'sentiment-dev'), max_seq_len)
-        test = self.loadFile(os.path.join(task_path, 'sentiment-test'), max_seq_len)
+        train = self.loadFile(os.path.join(task_path, 'sentiment-train'), max_seq_len, load_data)
+        dev = self.loadFile(os.path.join(task_path, 'sentiment-dev'), max_seq_len, load_data)
+        test = self.loadFile(os.path.join(task_path, 'sentiment-test'), max_seq_len, load_data)
         self.samples = train['X'] + dev['X'] + test['X']
         self.sst_data = {'train': train, 'dev': dev, 'test': test}
 
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
 
-    def loadFile(self, fpath, max_seq_len):
-        sst_data = {'X': [], 'y': []}
-        with io.open(fpath, 'r', encoding='utf-8') as f:
-            for line in f:
-                if self.nclasses == 2:
-                    sample = line.strip().split('\t')
-                    sst_data['y'].append(int(sample[1]))
-                    sst_data['X'].append(process_sentence(sample[0], max_seq_len))
-                elif self.nclasses == 5:
-                    sample = line.strip().split(' ', 1)
-                    sst_data['y'].append(int(sample[0]))
-                    sst_data['X'].append(process_sentence(sample[1], max_seq_len))
-        assert max(sst_data['y']) == self.nclasses - 1
+    def loadFile(self, fpath, max_seq_len, load_data):
+        if os.path.exists(fpath + '.%d.pkl' % self.nclasses) and load_data:
+            sst_data = pkl.load(open(fpath + '.%d.pkl' % self.nclasses, 'rb'))
+            logging.info("Loaded data from %s", fpath + '.%d.pkl' % self.nclasses)
+        else:
+            sst_data = {'X': [], 'y': []}
+            with io.open(fpath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if self.nclasses == 2:
+                        sample = line.strip().split('\t')
+                        sst_data['y'].append(int(sample[1]))
+                        sst_data['X'].append(process_sentence(sample[0], max_seq_len))
+                    elif self.nclasses == 5:
+                        sample = line.strip().split(' ', 1)
+                        sst_data['y'].append(int(sample[0]))
+                        sst_data['X'].append(process_sentence(sample[1], max_seq_len))
+            assert max(sst_data['y']) == self.nclasses - 1
+            pkl.dump(sst_data, open(fpath + '.%d.pkl' % self.nclasses, 'wb'))
+            logging.info("Saved data to %s", fpath + '.%d.pkl' % self.nclasses)
         return sst_data
 
     def run(self, params, batcher):

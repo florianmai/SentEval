@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, unicode_literals
 import os
 import pdb
 import logging
-import nltk
+import cPickle as pkl
 import numpy as np
 from sklearn.metrics import f1_score
 
@@ -15,11 +15,12 @@ from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
 
 class QuoraEval(object):
-    def __init__(self, taskpath, max_seq_len, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : Quora Question Similarity*****\n\n')
         self.seed = seed
-        train = sort_split(self.loadFile(os.path.join(taskpath, 'quora_duplicate_questions_clean.tsv'), max_seq_len))
-        test = sort_split(self.loadFile(os.path.join(taskpath, 'quora_test.tsv'), max_seq_len))
+        train = sort_split(self.loadFile(os.path.join(taskpath, 'quora_duplicate_questions_clean.tsv'),
+                           max_seq_len, load_data))
+        test = sort_split(self.loadFile(os.path.join(taskpath, 'quora_test.tsv'), max_seq_len, load_data))
 
         self.samples = train[0] + train[1] + test[0] + test[1]
         self.data = {'train': train, 'test': test}
@@ -27,13 +28,21 @@ class QuoraEval(object):
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
 
-    def loadFile(self, fpath, max_seq_len):
+    def loadFile(self, fpath, max_seq_len, load_data):
         '''
         Read in and process data directly from JSON
         Returns dictionary with format
             question_ID: (question, tokenized contexts, 0/1 labels, gold_idx)
         '''
-        return load_tsv(fpath, max_seq_len, s1_idx=3, s2_idx=4, targ_idx=5, skip_rows=1)
+        if os.path.exists(fpath + '.pkl') and load_data:
+            data = pkl.load(open(fpath + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", fpath + '.pkl')
+        else:
+            data = load_tsv(fpath, max_seq_len, s1_idx=3, s2_idx=4, targ_idx=5, skip_rows=1)
+            pkl.dump(data, open(fpath + '.pkl', 'wb'))
+            logging.info("Saved data to %s", fpath + '.pkl')
+        return data
+
 
     def run(self, params, batcher):
         embed = {'train': {}, 'test': {}}

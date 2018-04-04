@@ -13,11 +13,15 @@ import argparse
 import torch
 from utils import get_tasks
 
-
 # Set PATHs
+if "cs.nyu.edu" in os.uname()[1]:
+    PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
+else:
+    PATH_PREFIX = '/beegfs/aw3272/'
+
 PATH_SENTEVAL = '../'
 PATH_TO_DATA = '../data/senteval_data/'
-PATH_TO_GLOVE = '/beegfs/aw3272/raw_data/GloVe/glove.840B.300d.txt'
+PATH_TO_GLOVE = PATH_PREFIX + 'raw_data/GloVe/glove.840B.300d.txt'
 INFERSENT_PATH = 'infersent.allnli.pickle'
 
 assert os.path.isfile(INFERSENT_PATH) and os.path.isfile(PATH_TO_GLOVE), 'Set MODEL and GloVe PATHs'
@@ -43,7 +47,8 @@ def main(arguments):
     parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
     parser.add_argument("--log_file", help="File to log to", type=str,
-                        default='/beegfs/aw3272/ckpts/SentEval/infersent/log.log')
+                        default=PATH_PREFIX+'ckpts/SentEval/infersent/log.log')
+    parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
@@ -63,7 +68,7 @@ def main(arguments):
 
     # define senteval params
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
-                       'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
+            'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
 

@@ -10,10 +10,11 @@ MRPC : Microsoft Research Paraphrase (detection) Corpus
 '''
 from __future__ import absolute_import, division, unicode_literals
 
+import io
 import os
 import logging
+import cPickle as pkl
 import numpy as np
-import io
 from sklearn.metrics import f1_score
 
 from senteval.tools.validation import KFoldClassifier
@@ -21,15 +22,11 @@ from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
 
 class MRPCEval(object):
-    def __init__(self, task_path, max_seq_len, seed=1111):
+    def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.info('***** Transfer task : MRPC *****\n\n')
         self.seed = seed
-        train = self.loadFile(os.path.join(task_path, 'msr_paraphrase_train.txt'), max_seq_len)
-        test = self.loadFile(os.path.join(task_path, 'msr_paraphrase_test.txt'), max_seq_len)
-        #train = sort_split(self.loadFile(os.path.join(task_path, 'msr_paraphrase_train.txt'),
-        #                                 max_seq_len))
-        #test = sort_split(self.loadFile(os.path.join(task_path, 'msr_paraphrase_test.txt'),
-        #                                max_seq_len))
+        train = self.loadFile(os.path.join(task_path, 'msr_paraphrase_train.txt'), max_seq_len, load_data)
+        test = self.loadFile(os.path.join(task_path, 'msr_paraphrase_test.txt'), max_seq_len, load_data)
         self.samples = train['X_A'] + train['X_B'] + test['X_A'] + test['X_B']
         self.mrpc_data = {'train': train, 'test': test}
 
@@ -37,19 +34,24 @@ class MRPCEval(object):
         # TODO : Should we separate samples in "train, test"?
         return prepare(params, self.samples)
 
-    def loadFile(self, fpath, max_seq_len):
-        mrpc_data = {'X_A': [], 'X_B': [], 'y': []}
-        with io.open(fpath, 'r', encoding='utf-8') as f:
-            for line in f:
-                text = line.strip().split('\t')
-                mrpc_data['X_A'].append(process_sentence(text[3], max_seq_len))
-                mrpc_data['X_B'].append(process_sentence(text[4], max_seq_len))
-                mrpc_data['y'].append(text[0])
+    def loadFile(self, fpath, max_seq_len, load_data):
+        if os.path.exists(fpath + '.pkl') and load_data:
+            mrpc_data = pkl.load(open(fpath + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", fpath + '.pkl')
+        else:
+            mrpc_data = {'X_A': [], 'X_B': [], 'y': []}
+            with io.open(fpath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    text = line.strip().split('\t')
+                    mrpc_data['X_A'].append(process_sentence(text[3], max_seq_len))
+                    mrpc_data['X_B'].append(process_sentence(text[4], max_seq_len))
+                    mrpc_data['y'].append(text[0])
 
-        mrpc_data['X_A'] = mrpc_data['X_A'][1:]
-        mrpc_data['X_B'] = mrpc_data['X_B'][1:]
-        mrpc_data['y'] = [int(s) for s in mrpc_data['y'][1:]]
-        #return load_tsv(fpath, max_seq_len, s1_idx=3, s2_idx=4, targ_idx=0, skip_rows=1)
+            mrpc_data['X_A'] = mrpc_data['X_A'][1:]
+            mrpc_data['X_B'] = mrpc_data['X_B'][1:]
+            mrpc_data['y'] = [int(s) for s in mrpc_data['y'][1:]]
+            pkl.dump(mrpc_data, open(fpath + '.pkl', 'wb'))
+            logging.info("Saved data to %s", fpath + '.pkl')
         return mrpc_data
 
     def run(self, params, batcher):

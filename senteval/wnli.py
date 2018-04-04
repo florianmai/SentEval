@@ -15,18 +15,19 @@ import pdb
 import copy
 import codecs
 import logging
+import cPickle as pkl
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
 class WNLIEval(object):
-    def __init__(self, taskpath, max_seq_len, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : WNLI Entailment*****\n\n')
         self.seed = seed
-        train = sort_split(self.loadFile(os.path.join(taskpath, 'wnli_train.tsv'), max_seq_len))
-        valid = sort_split(self.loadFile(os.path.join(taskpath, 'wnli_valid.tsv'), max_seq_len))
-        test = sort_split(self.loadFile(os.path.join(taskpath, 'wnli_test.tsv'), max_seq_len))
+        train = sort_split(self.loadFile(os.path.join(taskpath, 'wnli_train.tsv'), max_seq_len, load_data))
+        valid = sort_split(self.loadFile(os.path.join(taskpath, 'wnli_valid.tsv'), max_seq_len, load_data))
+        test = sort_split(self.loadFile(os.path.join(taskpath, 'wnli_test.tsv'), max_seq_len, load_data))
 
         self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
         self.data = {'train': train, 'valid': valid, 'test': test}
@@ -34,9 +35,16 @@ class WNLIEval(object):
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
 
-    def loadFile(self, fpath, max_seq_len):
+    def loadFile(self, fpath, max_seq_len, load_data):
         '''Process the dataset located at path.'''
-        return load_tsv(fpath, max_seq_len)
+        if os.path.exists(fpath + '.pkl') and load_data:
+            data = pkl.load(open(fpath + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", fpath + '.pkl')
+        else:
+            data = load_tsv(fpath, max_seq_len)
+            pkl.dump(data, open(fpath + '.pkl', 'wb'))
+            logging.info("Saved data to %s", fpath + '.pkl')
+        return data
 
     def run(self, params, batcher):
         self.X, self.y = {}, {}

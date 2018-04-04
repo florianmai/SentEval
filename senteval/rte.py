@@ -18,6 +18,7 @@ import xml
 import copy
 import random
 import logging
+import cPickle as pkl
 import numpy as np
 from sklearn.metrics import f1_score
 
@@ -26,7 +27,7 @@ from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
 
 class RTEEval(object):
-    def __init__(self, taskpath, max_seq_len, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : RTE{1,2,3,5} Entailment *****\n\n')
         self.seed = seed
 
@@ -34,32 +35,40 @@ class RTEEval(object):
                 "rte1dev.xml", "RTE5_MainTask_DevSet.xml"]
         tests = ["RTE2_test.annotated.xml", "RTE3-TEST-GOLD.xml",
                  "rte1_annotated_test.xml", "RTE5_MainTask_TestSet_Gold.xml"]
-        train = sort_split(self.loadFile([os.path.join(taskpath, dev) for dev in devs], max_seq_len))
-        test = sort_split(self.loadFile([os.path.join(taskpath, test) for test in tests], max_seq_len))
+        train = sort_split(self.loadFile([os.path.join(taskpath, dev) for dev in devs],
+                           max_seq_len, load_data, os.path.join(taskpath, 'rte')))
+        test = sort_split(self.loadFile([os.path.join(taskpath, test) for test in tests],
+                          max_seq_len, load_data, os.path.join(taskpath, 'rte')))
         self.samples = train[0] + train[1] + test[0] + test[1]
         self.data = {'train': train, 'test': test}
 
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
 
-    def loadFile(self, paths, max_seq_len):
+    def loadFile(self, paths, max_seq_len, load_data, load_file):
         # Mapping the different label names to be consistent.
-        targ_map = {"YES": 0, "ENTAILMENT": 0, "TRUE": 0,
-                    "NO": 1, "CONTRADICTION": 1, "FALSE": 1, "UNKNOWN": 1}
-
-        sents1, sents2, targs = [], [], []
-        for path in  paths:
-            root = xml.etree.ElementTree.parse(path).getroot()
-            for child in root:
-                sents1.append(process_sentence(child[0].text, max_seq_len))
-                sents2.append(process_sentence(child[1].text, max_seq_len))
-                if "entailment" in child.attrib.keys():
-                    label = child.attrib["entailment"]
-                elif "value" in child.attrib.keys():
-                    label = child.attrib["value"]
-                targs.append(targ_map[label])
-            assert len(sents1) == len(sents2) == len(targs), pdb.set_trace()
+        if os.path.exists(load_file+ '.pkl') and load_data:
+            sents1, sents2, targs = pkl.load(open(load_file + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", load_file + '.pkl')
+        else:
+            targ_map = {"YES": 0, "ENTAILMENT": 0, "TRUE": 0,
+                        "NO": 1, "CONTRADICTION": 1, "FALSE": 1, "UNKNOWN": 1}
+            sents1, sents2, targs = [], [], []
+            for path in  paths:
+                root = xml.etree.ElementTree.parse(path).getroot()
+                for child in root:
+                    sents1.append(process_sentence(child[0].text, max_seq_len))
+                    sents2.append(process_sentence(child[1].text, max_seq_len))
+                    if "entailment" in child.attrib.keys():
+                        label = child.attrib["entailment"]
+                    elif "value" in child.attrib.keys():
+                        label = child.attrib["value"]
+                    targs.append(targ_map[label])
+                assert len(sents1) == len(sents2) == len(targs), pdb.set_trace()
+            pkl.dump((sents1, sents2, targs), open(load_file + '.pkl', 'wb'))
+            logging.info("Saved data to %s", load_file + '.pkl')
         return sents1, sents2, targs
+
 
     def run(self, params, batcher):
         embed = {'train': {}, 'test': {}}

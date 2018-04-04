@@ -71,50 +71,51 @@ class SE(object):
         tpath = self.params.task_path
         assert name in self.list_tasks, str(name) + ' not in ' + str(self.list_tasks)
         max_seq_len = self.params.max_seq_len
+        load_data = self.params.load_data
         seed = self.params.seed
         if name == 'CR':
-            self.evaluation = CREval(tpath + '/CR', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = CREval(tpath + '/CR', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'MR':
-            self.evaluation = MREval(tpath + '/MR', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = MREval(tpath + '/MR', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'MPQA':
-            self.evaluation = MPQAEval(tpath + '/MPQA', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = MPQAEval(tpath + '/MPQA', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SUBJ':
-            self.evaluation = SUBJEval(tpath + '/SUBJ', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = SUBJEval(tpath + '/SUBJ', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SST2':
-            self.evaluation = SSTEval(tpath + '/SST/binary', nclasses=2, max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = SSTEval(tpath + '/SST/binary', nclasses=2, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SST5':
-            self.evaluation = SSTEval(tpath + '/SST/fine', nclasses=5, max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = SSTEval(tpath + '/SST/fine', nclasses=5, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'TREC':
-            self.evaluation = TRECEval(tpath + '/TREC', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = TRECEval(tpath + '/TREC', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'MRPC':
-            self.evaluation = MRPCEval(tpath + '/MRPC', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = MRPCEval(tpath + '/MRPC', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SICKRelatedness':
-            self.evaluation = SICKRelatednessEval(tpath + '/SICK', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = SICKRelatednessEval(tpath + '/SICK', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'STSBenchmark':
-            self.evaluation = STSBenchmarkEval(tpath + '/STS/STSBenchmark', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = STSBenchmarkEval(tpath + '/STS/STSBenchmark', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SICKEntailment':
-            self.evaluation = SICKEntailmentEval(tpath + '/SICK', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = SICKEntailmentEval(tpath + '/SICK', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SNLI':
-            self.evaluation = SNLIEval(tpath + '/SNLI', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = SNLIEval(tpath + '/SNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name in ['STS12', 'STS13', 'STS14', 'STS15', 'STS16']:
             fpath = name + '-en-test'
-            self.evaluation = eval(name + 'Eval')(tpath + '/STS/' + fpath, max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = eval(name + 'Eval')(tpath + '/STS/' + fpath, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'ImageCaptionRetrieval':
-            self.evaluation = ImageCaptionRetrievalEval(tpath + '/COCO', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = ImageCaptionRetrievalEval(tpath + '/COCO', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'MNLI':
-            self.evaluation = MNLIEval(tpath + '/MNLI', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = MNLIEval(tpath + '/MNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'Quora':
-            self.evaluation = QuoraEval(tpath + '/Quora', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = QuoraEval(tpath + '/Quora', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'RTE':
-            self.evaluation = RTEEval(tpath + '/RTE', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = RTEEval(tpath + '/RTE', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SQuAD':
-            self.evaluation = SQuADEval(tpath + '/SQuAD', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = SQuADEval(tpath + '/SQuAD', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'WNLI':
-            self.evaluation = WNLIEval(tpath + '/WNLI', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = WNLIEval(tpath + '/WNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'Warstadt':
-            self.evaluation = WarstadtEval(tpath + '/Warstadt', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = WarstadtEval(tpath + '/Warstadt', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'ANLI':
-            self.evaluation = ANLIEval(tpath + '/ANLI', max_seq_len=max_seq_len, seed=seed)
+            self.evaluation = ANLIEval(tpath + '/ANLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
 
         self.params.current_task = name
         self.evaluation.do_prepare(self.params, self.prepare)

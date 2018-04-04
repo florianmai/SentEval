@@ -15,6 +15,7 @@ import pdb
 import json
 import copy
 import logging
+import cPickle as pkl
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier
@@ -22,13 +23,13 @@ from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
 
 class SQuADEval(object):
-    def __init__(self, taskpath, max_seq_len, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : SQuAD Classification *****\n\n')
         self.seed = seed
 
-        train = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_train.json"), max_seq_len))
-        valid = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_dev.json"), max_seq_len))
-        test = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_test.json"), max_seq_len))
+        train = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_train.json"), max_seq_len, load_data))
+        valid = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_dev.json"), max_seq_len, load_data))
+        test = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_test.json"), max_seq_len, load_data))
 
         # sort data (by s2 first) to reduce padding
         self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
@@ -37,15 +38,21 @@ class SQuADEval(object):
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
 
-    def loadFile(self, fpath, max_seq_len):
+    def loadFile(self, fpath, max_seq_len, load_data):
         '''Load a single split'''
-        quests, ctxs, targs = [], [], []
-        data = json.load(open(fpath))
-        for datum in data:
-            quests.append(process_sentence(datum['question'], max_seq_len))
-            ctxs.append(process_sentence(datum['sentence'], max_seq_len))
-            assert datum['label'] in ['True', 'False'], pdb.set_trace()
-            targs.append(int(datum['label'] == 'True'))
+        if os.path.exists(fpath + '.pkl') and load_data:
+            quests, ctxs, targs = pkl.load(open(fpath + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", fpath + '.pkl')
+        else:
+            quests, ctxs, targs = [], [], []
+            data = json.load(open(fpath))
+            for datum in data:
+                quests.append(process_sentence(datum['question'], max_seq_len))
+                ctxs.append(process_sentence(datum['sentence'], max_seq_len))
+                assert datum['label'] in ['True', 'False'], pdb.set_trace()
+                targs.append(int(datum['label'] == 'True'))
+            pkl.dump((quests, ctxs, targs), open(fpath + '.pkl', 'wb'))
+            logging.info("Saved data to %s", fpath + '.pkl')
         return quests, ctxs, targs
 
     def run(self, params, batcher):

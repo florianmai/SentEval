@@ -19,7 +19,7 @@ from senteval.tools.validation import InnerKFoldClassifier
 
 
 class BinaryClassifierEval(object):
-    def __init__(self, pos, neg, seed=1111):
+    def __init__(self, pos, neg, max_seq_len, load_data, max_seq_len, load_data, seed=1111):
         self.seed = seed
         self.samples, self.labels = pos + neg, [1] * len(pos) + [0] * len(neg)
         self.n_samples = len(self.samples)
@@ -61,32 +61,32 @@ class BinaryClassifierEval(object):
 
 
 class CREval(BinaryClassifierEval):
-    def __init__(self, task_path, seed=1111):
+    def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : CR *****\n\n')
         pos = self.loadFile(os.path.join(task_path, 'custrev.pos'))
         neg = self.loadFile(os.path.join(task_path, 'custrev.neg'))
-        super(self.__class__, self).__init__(pos, neg, seed)
+        super(self.__class__, self).__init__(pos, neg, max_seq_len, load_data, seed)
 
 
 class MREval(BinaryClassifierEval):
-    def __init__(self, task_path, seed=1111):
+    def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : MR *****\n\n')
         pos = self.loadFile(os.path.join(task_path, 'rt-polarity.pos'))
         neg = self.loadFile(os.path.join(task_path, 'rt-polarity.neg'))
-        super(self.__class__, self).__init__(pos, neg, seed)
+        super(self.__class__, self).__init__(pos, neg, max_seq_len, load_data, seed)
 
 
 class SUBJEval(BinaryClassifierEval):
-    def __init__(self, task_path, seed=1111):
+    def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : SUBJ *****\n\n')
         obj = self.loadFile(os.path.join(task_path, 'subj.objective'))
         subj = self.loadFile(os.path.join(task_path, 'subj.subjective'))
-        super(self.__class__, self).__init__(obj, subj, seed)
+        super(self.__class__, self).__init__(obj, subj, max_seq_len, load_data, seed)
 
 
 class MPQAEval(BinaryClassifierEval):
-    def __init__(self, task_path, seed=1111):
+    def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : MPQA *****\n\n')
         pos = self.loadFile(os.path.join(task_path, 'mpqa.pos'))
         neg = self.loadFile(os.path.join(task_path, 'mpqa.neg'))
-        super(self.__class__, self).__init__(pos, neg, seed)
+        super(self.__class__, self).__init__(pos, neg, max_seq_len, load_data, seed)
