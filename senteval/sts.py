@@ -16,6 +16,7 @@ import os
 import io
 import numpy as np
 import logging
+import cPickle as pkl
 
 from scipy.stats import spearmanr, pearsonr
 
@@ -25,7 +26,7 @@ from senteval.tools.utils import process_sentence
 
 
 class STSEval(object):
-    def loadFile(self, fpath):
+    def loadFile(self, fpath, max_seq_len, load_data):
         self.data = {}
         self.samples = []
 
@@ -40,8 +41,8 @@ class STSEval(object):
             not_empty_idx = raw_scores != ''
 
             gs_scores = [float(x) for x in raw_scores[not_empty_idx]]
-            sent1 = np.array([s.split() for s in sent1])[not_empty_idx]
-            sent2 = np.array([s.split() for s in sent2])[not_empty_idx]
+            sent1 = np.array([process_sentence(s, max_seq_len) for s in sent1])[not_empty_idx]
+            sent2 = np.array([process_sentence(s, max_seq_len) for s in sent2])[not_empty_idx]
             # sort data by length to minimize padding in batcher
             sorted_data = sorted(zip(sent1, sent2, gs_scores),
                                  key=lambda z: (len(z[0]), len(z[1]), z[2]))
@@ -106,67 +107,71 @@ class STSEval(object):
 
 
 class STS12Eval(STSEval):
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS12 *****\n\n')
         self.seed = seed
         self.datasets = ['MSRpar', 'MSRvid', 'SMTeuroparl',
                          'surprise.OnWN', 'surprise.SMTnews']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, max_seq_len, load_data)
 
 
 class STS13Eval(STSEval):
     # STS13 here does not contain the "SMT" subtask due to LICENSE issue
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS13 (-SMT) *****\n\n')
         self.seed = seed
         self.datasets = ['FNWN', 'headlines', 'OnWN']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, max_seq_len, load_data)
 
 
 class STS14Eval(STSEval):
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS14 *****\n\n')
         self.seed = seed
         self.datasets = ['deft-forum', 'deft-news', 'headlines',
                          'images', 'OnWN', 'tweet-news']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, max_seq_len, load_data)
 
 
 class STS15Eval(STSEval):
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS15 *****\n\n')
         self.seed = seed
         self.datasets = ['answers-forums', 'answers-students',
                          'belief', 'headlines', 'images']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, max_seq_len, load_data)
 
 
 class STS16Eval(STSEval):
-    def __init__(self, taskpath, seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS16 *****\n\n')
         self.seed = seed
         self.datasets = ['answer-answer', 'headlines', 'plagiarism',
                          'postediting', 'question-question']
-        self.loadFile(taskpath)
+        self.loadFile(taskpath, max_seq_len, load_data)
 
 
 class STSBenchmarkEval(SICKRelatednessEval):
-    def __init__(self, task_path, max_seq_len, seed=1111):
+    def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('\n\n***** Transfer task : STSBenchmark*****\n\n')
         self.seed = seed
-        train = self.loadFile(os.path.join(task_path, 'sts-train.csv'), max_seq_len)
-        dev = self.loadFile(os.path.join(task_path, 'sts-dev.csv'), max_seq_len)
-        test = self.loadFile(os.path.join(task_path, 'sts-test.csv'), max_seq_len)
+        train = self.loadFile(os.path.join(task_path, 'sts-train.csv'), max_seq_len, load_data)
+        dev = self.loadFile(os.path.join(task_path, 'sts-dev.csv'), max_seq_len, load_data)
+        test = self.loadFile(os.path.join(task_path, 'sts-test.csv'), max_seq_len, load_data)
         self.sick_data = {'train': train, 'dev': dev, 'test': test}
 
-    def loadFile(self, fpath, max_seq_len):
-        sick_data = {'X_A': [], 'X_B': [], 'y': []}
-        with io.open(fpath, 'r', encoding='utf-8') as f:
-            for line in f:
-                text = line.strip().split('\t')
-                sick_data['X_A'].append(process_sentence(text[5], max_seq_len))
-                sick_data['X_B'].append(process_sentence(text[6], max_seq_len))
-                sick_data['y'].append(text[4])
+    def loadFile(self, fpath, max_seq_len, load_data):
+        if os.path.exists(fpath + '.pkl') and load_data:
+            sick_data = pkl.load(open(fpath + '.pkl', 'rb'))
+        else:
+            sick_data = {'X_A': [], 'X_B': [], 'y': []}
+            with io.open(fpath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    text = line.strip().split('\t')
+                    sick_data['X_A'].append(process_sentence(text[5], max_seq_len))
+                    sick_data['X_B'].append(process_sentence(text[6], max_seq_len))
+                    sick_data['y'].append(text[4])
 
-        sick_data['y'] = [float(s) for s in sick_data['y']]
+            sick_data['y'] = [float(s) for s in sick_data['y']]
+            pkl.dump(sick_data, open(fpath + '.pkl', 'wb'))
         return sick_data

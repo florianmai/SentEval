@@ -65,6 +65,7 @@ def main(arguments):
     if args.log_file:
         fileHandler = logging.FileHandler(args.log_file)
         logging.getLogger().addHandler(fileHandler)
+    logging.info(args)
 
     # define senteval params
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,

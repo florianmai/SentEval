@@ -7,14 +7,20 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import os
 import sys
 import numpy as np
 import logging
 import argparse
 
 import data
+from utils import get_tasks
 
 # Set PATHs
+if "cs.nyu.edu" in os.uname()[1]:
+    PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
+else:
+    PATH_PREFIX = '/beegfs/aw3272/'
 PATH_TO_SENTEVAL = '../'
 PATH_TO_DATA = '../data/senteval_data'
 PATH_TO_GLOVE = 'glove/glove.840B.300d.txt'
@@ -22,7 +28,6 @@ PATH_TO_GLOVE = 'glove/glove.840B.300d.txt'
 # import SentEval
 sys.path.insert(0, PATH_TO_SENTEVAL)
 import senteval
-
 
 def prepare(params, samples):
     _, params.word2id = data.create_dictionary(samples)
@@ -60,26 +65,29 @@ def main(arguments):
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
+    parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
 
     # Model options
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=32)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
 
     # Classifier options
-    parser.add_argument("--cls_batch_size", help="Batch size to use for classifier", type=int, default=32)
+    parser.add_argument("--cls_batch_size", help="Batch size to use for classifier", type=int, default=16)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
-    fileHandler = logging.FileHandler(args.log_file)
-    logging.getLogger().addHandler(fileHandler)
+    if args.log_file:
+        fileHandler = logging.FileHandler(args.log_file)
+        logging.getLogger().addHandler(fileHandler)
+    logging.info(args)
 
     # SentEval params
-    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
-                       'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
+            'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)
-    tasks = args.tasks.split(',')
+    tasks = get_tasks(args.tasks)
     results = se.eval(tasks)
     print(results)
 

@@ -73,13 +73,17 @@ def main(arguments):
 
     # Logistics
     parser.add_argument("--gpu_id", help="gpu id to use", type=int, default=0)
-    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
+    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=0)
     parser.add_argument("--log_file", help="File to log to", type=str,
-                        default='/beegfs/aw3272/ckpts/SentEval/gensen/log.log')
+                        default=PATH_PREFIX + 'ckpts/SentEval/gensen/log.log')
+    parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
+
+    # Model options
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
     parser.add_argument("--folder_path", help="path to model folder", default=PATH_GENSEN + 'data/models')
     parser.add_argument("--prefix_1", help="prefix to model 1", default='nli_large_bothskip_parse')
     parser.add_argument("--prefix_2", help="prefix to model 2", default='nli_large_bothskip')
-    parser.add_argument( "--pretrain", help="path to pretrained vectors",
+    parser.add_argument("--pretrain", help="path to pretrained vectors",
                         default=PATH_GENSEN + 'data/embedding/glove.840B.300d.h5')
     # NOTE: To decide the pooling strategy for a new model, note down the validation set scores below.
     parser.add_argument("--strategy", help="Approach to create sentence embedding last/max/best", default="best")
@@ -88,23 +92,22 @@ def main(arguments):
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
 
-    # Model options
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
 
     # Classifier options
     parser.add_argument("--cls_batch_size", help="Batch size to use for the classifier", type=int,
-                        default=32)
+                        default=16)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
     if args.log_file:
         fileHandler = logging.FileHandler(args.log_file)
         logging.getLogger().addHandler(fileHandler)
+    logging.info(args)
     torch.cuda.set_device(args.gpu_id)
 
     # Set up SentEval
-    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10,
-                       'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size}
+    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
+            'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
                                      'tenacity': 5, 'epoch_size': 4}
 

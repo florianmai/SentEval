@@ -19,7 +19,7 @@ from senteval.tools.validation import InnerKFoldClassifier
 
 
 class BinaryClassifierEval(object):
-    def __init__(self, pos, neg, max_seq_len, load_data, max_seq_len, load_data, seed=1111):
+    def __init__(self, pos, neg, max_seq_len, load_data, seed=1111):
         self.seed = seed
         self.samples, self.labels = pos + neg, [1] * len(pos) + [0] * len(neg)
         self.n_samples = len(self.samples)
