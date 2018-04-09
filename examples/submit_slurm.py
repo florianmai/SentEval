@@ -11,7 +11,7 @@ else:
     PATH_PREFIX = '/beegfs/aw3272'
 
 proj_name = 'SentEval'
-exp_name = 'skipthought' # need to make the folders if don't exist
+exp_name = 'gensen' # need to make the folders if don't exist
 run_name = 'benchmark_v2'
 error_file = '%s/ckpts/%s/%s/%s.err' % (PATH_PREFIX, proj_name, exp_name, run_name)
 out_file = '%s/ckpts/%s/%s/%s.out' % (PATH_PREFIX, proj_name, exp_name, run_name)
@@ -19,8 +19,8 @@ log_file = '%s/ckpts/%s/%s/%s.log' % (PATH_PREFIX, proj_name, exp_name, run_name
 slurm_args = ['-J', exp_name, '-e', error_file, '-o', out_file, '-t', '2-00:00',
         '--gres=gpu:1080ti:1', '--mail-type=end', '--mail-user=aw3272@nyu.edu']
 
-model = 'skipthought'
-tasks = 'benchmark'
+model = 'gensen'
+tasks = 'MNLI'
 use_pytorch = '1'
 cls_batch_size = '32'
 

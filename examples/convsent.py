@@ -52,7 +52,7 @@ def main(arguments):
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
-    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=100)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
 
     # Model options
     parser.add_argument("--batch_size", help="Batch size to use", type=int, default=32)
