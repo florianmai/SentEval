@@ -106,8 +106,7 @@ class RTEEval(object):
         testF = np.c_[np.abs(testA - testB), testA * testB]
         testY = embed['test']['y']
 
-        config = {'nclasses': 2, 'seed': self.seed,
-                  'usepytorch': params.usepytorch,
+        config = {'nclasses': 2, 'seed': self.seed, 'usepytorch': params.usepytorch,
                   'classifier': params.classifier,
                   'nhid': params.nhid, 'kfold': params.kfold}
         clf = KFoldClassifier(train={'X': trainF, 'y': trainY},
@@ -117,5 +116,5 @@ class RTEEval(object):
         testf1 = round(100*f1_score(testY, yhat), 2)
         logging.debug('Dev acc : {0} Test acc {1}; Test F1 {2} for RTE.\n'
                       .format(devacc, testacc, testf1))
-        return {'devacc': devacc, 'acc': testacc, 'f1': testf1,
+        return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': yhat,
                 'ndev': len(trainA), 'ntest': len(testA)}

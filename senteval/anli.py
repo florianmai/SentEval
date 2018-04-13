@@ -21,7 +21,7 @@ from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, sort_split
 
 class ANLIEval(object):
-    def __init__(self, taskpath, max_seq_len, load_data,  seed=1111):
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : ANLI Entailment*****\n\n')
         self.seed = seed
         targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
@@ -31,7 +31,6 @@ class ANLIEval(object):
                            max_seq_len, targ_map, load_data))
         test = sort_split(self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'),
                           max_seq_len, targ_map, load_data))
-
 
         self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
         self.data = {'train': train, 'valid': valid, 'test': test}
@@ -101,8 +100,8 @@ class ANLIEval(object):
         config['classifier'] = config_classifier
 
         clf = SplitClassifier(self.X, self.y, config)
-        devacc, testacc = clf.run()
+        devacc, testacc, test_preds = clf.run()
         logging.debug('Dev acc : {0} Test acc : {1} for ANLI\n'.format(devacc, testacc))
-        return {'devacc': devacc, 'acc': testacc,
+        return {'devacc': devacc, 'acc': testacc, 'preds': test_preds,
                 'ndev': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}

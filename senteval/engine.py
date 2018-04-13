@@ -34,8 +34,8 @@ ALL_TASKS = ['CR', 'MR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
              'SNLI', 'ImageCaptionRetrieval', 'STS12', 'STS13',
              'STS14', 'STS15', 'STS16',
              'MNLI', 'Quora', 'RTE', 'SQuAD', 'Warstadt', 'WNLI', 'ANLI']
-#BENCHMARK_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'MNLI', 'Quora', 'RTE', 'SQuAD', 'Warstadt', 'WNLI']
-BENCHMARK_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'RTE', 'SQuAD', 'Warstadt', 'WNLI']
+BENCHMARK_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'MNLI', 'Quora', 'RTE', 'SQuAD', 'Warstadt', 'WNLI']
+#BENCHMARK_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'RTE', 'SQuAD', 'Warstadt', 'WNLI']
 
 class SE(object):
     def __init__(self, params, batcher, prepare=None):

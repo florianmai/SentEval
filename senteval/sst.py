@@ -84,7 +84,7 @@ class SSTEval(object):
 
         config_classifier = {'nclasses': self.nclasses, 'seed': self.seed,
                              'usepytorch': params.usepytorch,
-                             'classifier': params.classifier}
+                             'classifier': params.classifier, 'noreg': False}
 
         clf = SplitClassifier(X={'train': sst_embed['train']['X'],
                                  'valid': sst_embed['dev']['X'],
@@ -94,10 +94,9 @@ class SSTEval(object):
                                  'test': sst_embed['test']['y']},
                               config=config_classifier)
 
-        devacc, testacc = clf.run()
+        devacc, testacc, test_preds = clf.run()
         logging.debug('\nDev acc : {0} Test acc : {1} for \
             SST {2} classification\n'.format(devacc, testacc, self.task_name))
 
-        return {'devacc': devacc, 'acc': testacc,
-                'ndev': len(sst_embed['dev']['X']),
-                'ntest': len(sst_embed['test']['X'])}
+        return {'devacc': devacc, 'acc': testacc, 'preds': test_preds,
+                'ndev': len(sst_embed['dev']['X']), 'ntest': len(sst_embed['test']['X'])}

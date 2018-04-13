@@ -51,7 +51,7 @@ class InnerKFoldClassifier(object):
         self.usepytorch = config['usepytorch']
         self.classifier_config = config['classifier']
         self.modelname = get_classif_name(self.classifier_config, self.usepytorch)
-
+        self.clf = clf
         self.k = 5 if 'kfold' not in config else config['kfold']
 
     def run(self):
@@ -101,7 +101,7 @@ class InnerKFoldClassifier(object):
                 clf.fit(X_train, y_train)
 
             self.testresults.append(round(100*clf.score(X_test, y_test), 2))
-
+        self.clf = clf
         devaccuracy = round(np.mean(self.devresults), 2)
         testaccuracy = round(np.mean(self.testresults), 2)
         return devaccuracy, testaccuracy
@@ -119,8 +119,10 @@ class KFoldClassifier(object):
         self.seed = config['seed']
         self.usepytorch = config['usepytorch']
         self.classifier_config = config['classifier']
+        self.cudaEfficient = False if 'cudaEfficient' not in config else \
+            config['cudaEfficient']
         self.modelname = get_classif_name(self.classifier_config, self.usepytorch)
-
+        self.clf = None
         self.k = 5 if 'kfold' not in config else config['kfold']
 
     def run(self):
@@ -129,8 +131,7 @@ class KFoldClassifier(object):
                      .format(self.modelname, self.k))
         regs = [10**t for t in range(-5, -1)] if self.usepytorch else \
                [2**t for t in range(-1, 6, 1)]
-        skf = StratifiedKFold(n_splits=self.k, shuffle=True,
-                              random_state=self.seed)
+        skf = StratifiedKFold(n_splits=self.k, shuffle=True, random_state=self.seed)
         scores = []
 
         for reg in regs:
@@ -144,9 +145,13 @@ class KFoldClassifier(object):
 
                 # Train classifier
                 if self.usepytorch:
+                    #clf = MLP(self.classifier_config, inputdim=self.featdim,
+                    #          nclasses=self.nclasses, l2reg=reg,
+                    #          seed=self.seed)
                     clf = MLP(self.classifier_config, inputdim=self.featdim,
                               nclasses=self.nclasses, l2reg=reg,
-                              seed=self.seed)
+                              seed=self.seed, cudaEfficient=self.cudaEfficient)
+
                     clf.fit(X_train, y_train, validation_data=(X_test, y_test))
                 else:
                     clf = LogisticRegression(C=reg, random_state=self.seed)
@@ -166,18 +171,21 @@ class KFoldClassifier(object):
 
         logging.info('Evaluating...')
         if self.usepytorch:
+            #clf = MLP(self.classifier_config, inputdim=self.featdim,
+            #          nclasses=self.nclasses, l2reg=optreg,
+            #          seed=self.seed)
             clf = MLP(self.classifier_config, inputdim=self.featdim,
-                      nclasses=self.nclasses, l2reg=optreg,
-                      seed=self.seed)
+                      nclasses=self.nclasses, l2reg=reg,
+                      seed=self.seed, cudaEfficient=self.cudaEfficient)
+
             clf.fit(self.train['X'], self.train['y'], validation_split=0.05)
         else:
             clf = LogisticRegression(C=optreg, random_state=self.seed)
             clf.fit(self.train['X'], self.train['y'])
-        yhat = clf.predict(self.test['X'])
-
+        self.clf = clf
         testaccuracy = clf.score(self.test['X'], self.test['y'])
         testaccuracy = round(100*testaccuracy, 2)
-
+        yhat = clf.predict(self.test['X'])
         return devaccuracy, testaccuracy, yhat
 
 
@@ -198,16 +206,17 @@ class SplitClassifier(object):
         self.modelname = get_classif_name(self.classifier_config, self.usepytorch)
         self.noreg = False if 'noreg' not in config else config['noreg']
         self.config = config
+        self.clf = None
 
     def run(self):
-        logging.info('Training {0} with standard validation..'
-                     .format(self.modelname))
+        logging.info('Training {0} with standard validation..'.format(self.modelname))
         regs = [10**t for t in range(-5, -1)] if self.usepytorch else \
                [2**t for t in range(-2, 4, 1)]
         if self.noreg:
             regs = [0.]
         scores = []
         for reg in regs:
+            logging.info('Training with regularization %.5f', reg)
             if self.usepytorch:
                 clf = MLP(self.classifier_config, inputdim=self.featdim,
                           nclasses=self.nclasses, l2reg=reg,
@@ -240,7 +249,8 @@ class SplitClassifier(object):
         else:
             clf = LogisticRegression(C=optreg, random_state=self.seed)
             clf.fit(self.X['train'], self.y['train'])
-
+        self.clf = clf
         testaccuracy = clf.score(self.X['test'], self.y['test'])
         testaccuracy = round(100*testaccuracy, 2)
-        return devaccuracy, testaccuracy
+        test_preds = clf.predict(self.X['test'])
+        return devaccuracy, testaccuracy, test_preds

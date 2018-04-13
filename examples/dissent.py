@@ -1,3 +1,4 @@
+""" Evaluation of trained model on Transfer Tasks (SentEval) """
 from __future__ import absolute_import, division, unicode_literals
 
 import sys
@@ -8,22 +9,8 @@ import argparse
 import logging
 from os.path import join as pjoin
 
-import logging
-
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
-parser = argparse.ArgumentParser(description='DisSent SentEval Evaluation')
-parser.add_argument("--outputdir", type=str, default='sandbox/', help="Output directory")
-parser.add_argument("--outputmodelname", type=str, default='dis-model')
-parser.add_argument("--gpu_id", type=int, default=0, help="GPU ID, we map all model's gpu to this id")
-parser.add_argument("--search_start_epoch", type=int, default=-1, help="Search from [start, end] epochs ")
-parser.add_argument("--search_end_epoch", type=int, default=-1, help="Search from [start, end] epochs")
-
-params, _ = parser.parse_known_args()
-
-# set gpu device
-torch.cuda.set_device(params.gpu_id)
 
 # Set PATHs
 GLOVE_PATH = '/home/anie/glove/glove.840B.300d.txt'
@@ -36,10 +23,8 @@ assert os.path.isfile(GLOVE_PATH), 'Set GloVe PATH'
 sys.path.insert(0, PATH_SENTEVAL)
 import senteval
 
-
 def prepare(params, samples):
-    params.infersent.build_vocab([' '.join(s) for s in samples],
-                                 tokenize=False)
+    params.infersent.build_vocab([' '.join(s) for s in samples], tokenize=False)
 
 
 def batcher(params, batch):
@@ -50,16 +35,47 @@ def batcher(params, batch):
     return embeddings
 
 
-"""
-Evaluation of trained model on Transfer Tasks (SentEval)
-"""
-transfer_tasks = ['MR', 'CR', 'SUBJ', 'MPQA', 'SST', 'TREC', 'SICKRelatedness',
-                      'SICKEntailment', 'MRPC', 'STS14']
-
 
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
-if __name__ == "__main__":
+def main(arguments):
+    parser = argparse.ArgumentParser(description=__doc__,
+                    formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    # Logistics
+    parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
+    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
+    parser.add_argument("--log_file", help="File to log to", type=str)
+    parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
+
+    # Task options
+    parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
+    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
+
+    # Model options
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
+
+    # Classifier options
+    parser.add_argument("--cls_batch_size", help="Batch size to use", type=int, default=64)
+
+    args = parser.parse_args(arguments)
+    logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+    if args.log_file:
+        fileHandler = logging.FileHandler(args.log_file)
+        logging.getLogger().addHandler(fileHandler)
+    logging.info(args)
+
+    parser = argparse.ArgumentParser(description='DisSent SentEval Evaluation')
+    parser.add_argument("--outputdir", type=str, default='sandbox/', help="Output directory")
+    parser.add_argument("--outputmodelname", type=str, default='dis-model')
+    parser.add_argument("--gpu_id", type=int, default=0, help="GPU ID, we map all model's gpu to this id")
+    parser.add_argument("--search_start_epoch", type=int, default=-1, help="Search from [start, end] epochs ")
+    parser.add_argument("--search_end_epoch", type=int, default=-1, help="Search from [start, end] epochs")
+
+    params, _ = parser.parse_known_args()
+
+    # set gpu device
+    torch.cuda.set_device(params.gpu_id)
 
     # We map cuda to the current cuda device
     # this only works when we set params.gpu_id = 0
@@ -112,3 +128,5 @@ if __name__ == "__main__":
 
             logging.info(results_transfer)
 
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

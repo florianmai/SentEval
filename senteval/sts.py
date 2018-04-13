@@ -60,6 +60,7 @@ class STSEval(object):
 
     def run(self, params, batcher):
         results = {}
+        all_sys_scores = []
         for dataset in self.datasets:
             sys_scores = []
             input1, input2, gs_scores = self.data[dataset]
@@ -79,25 +80,23 @@ class STSEval(object):
             results[dataset] = {'pearson': pearsonr(sys_scores, gs_scores),
                                 'spearman': spearmanr(sys_scores, gs_scores),
                                 'nsamples': len(sys_scores)}
+            all_sys_scores += sys_scores
             logging.debug('%s : pearson = %.4f, spearman = %.4f' %
                           (dataset, results[dataset]['pearson'][0],
                            results[dataset]['spearman'][0]))
 
         weights = [results[dset]['nsamples'] for dset in results.keys()]
-        list_prs = np.array([results[dset]['pearson'][0] for
-                            dset in results.keys()])
-        list_spr = np.array([results[dset]['spearman'][0] for
-                            dset in results.keys()])
+        list_prs = np.array([results[dset]['pearson'][0] for dset in results.keys()])
+        list_spr = np.array([results[dset]['spearman'][0] for dset in results.keys()])
 
         avg_pearson = np.average(list_prs)
         avg_spearman = np.average(list_spr)
         wavg_pearson = np.average(list_prs, weights=weights)
         wavg_spearman = np.average(list_spr, weights=weights)
 
-        results['all'] = {'pearson': {'mean': avg_pearson,
-                                      'wmean': wavg_pearson},
-                          'spearman': {'mean': avg_spearman,
-                                       'wmean': wavg_spearman}}
+        results['all'] = {'pearson': {'mean': avg_pearson, 'wmean': wavg_pearson},
+                          'spearman': {'mean': avg_spearman, 'wmean': wavg_spearman},
+                          'preds': all_sys_scores}
         logging.debug('ALL (weighted average) : Pearson = %.4f, \
             Spearman = %.4f' % (wavg_pearson, wavg_spearman))
         logging.debug('ALL (average) : Pearson = %.4f, \

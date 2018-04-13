@@ -23,8 +23,7 @@ import torch.nn.functional as F
 
 
 class PyTorchClassifier(object):
-    def __init__(self, inputdim, nclasses, l2reg=0., batch_size=64, seed=1111,
-                 cudaEfficient=False):
+    def __init__(self, inputdim, nclasses, l2reg=0., batch_size=64, seed=1111, cudaEfficient=True):
         # fix seed
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -116,9 +115,12 @@ class PyTorchClassifier(object):
     def score(self, devX, devy):
         self.model.eval()
         correct = 0
-        if not isinstance(devX, torch.cuda.FloatTensor) or self.cudaEfficient:
+        if not isinstance(devX, torch.cuda.FloatTensor) and not self.cudaEfficient:
             devX = torch.FloatTensor(devX).cuda()
             devy = torch.LongTensor(devy).cuda()
+        else:
+            devX = torch.FloatTensor(devX)
+            devy = torch.LongTensor(devy)
         for i in range(0, len(devX), self.batch_size):
             Xbatch = Variable(devX[i:i + self.batch_size], volatile=True)
             ybatch = Variable(devy[i:i + self.batch_size], volatile=True)
@@ -133,14 +135,17 @@ class PyTorchClassifier(object):
 
     def predict(self, devX):
         self.model.eval()
-        if not isinstance(devX, torch.cuda.FloatTensor):
+        if not isinstance(devX, torch.cuda.FloatTensor) and not self.cudaEfficient:
             devX = torch.FloatTensor(devX).cuda()
+        else:
+            devX = torch.FloatTensor(devX)
         yhat = np.array([])
         for i in range(0, len(devX), self.batch_size):
             Xbatch = Variable(devX[i:i + self.batch_size], volatile=True)
+            if self.cudaEfficient:
+                Xbatch = Xbatch.cuda()
             output = self.model(Xbatch)
-            yhat = np.append(yhat,
-                             output.data.max(1)[1].cpu().numpy())
+            yhat = np.append(yhat, output.data.max(1)[1].cpu().numpy())
         yhat = np.vstack(yhat)
         return yhat
 

@@ -4,26 +4,30 @@ Quora Question Pairs
 from __future__ import absolute_import, division, unicode_literals
 
 import os
-import pdb
+import ipdb as pdb
+import copy
 import logging
 import cPickle as pkl
 import numpy as np
 from sklearn.metrics import f1_score
 
-from senteval.tools.validation import KFoldClassifier
-from senteval.tools.utils import process_sentence, load_tsv, sort_split
+from senteval.tools.validation import SplitClassifier #KFoldClassifier
+from senteval.tools.utils import process_sentence, load_tsv, sort_split, split_split
 
 
 class QuoraEval(object):
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : Quora Question Similarity*****\n\n')
         self.seed = seed
-        train = sort_split(self.loadFile(os.path.join(taskpath, 'quora_duplicate_questions_clean.tsv'),
-                           max_seq_len, load_data))
-        test = sort_split(self.loadFile(os.path.join(taskpath, 'quora_test.tsv'), max_seq_len, load_data))
+        train = self.loadFile(os.path.join(taskpath, 'quora_duplicate_questions_clean.tsv'),
+                              max_seq_len, load_data)
+        train, valid = split_split(train)
+        train = sort_split(train)
+        valid = sort_split(valid)
+        test = sort_split(self.loadTest(os.path.join(taskpath, 'quora_test_ans.tsv'), max_seq_len, load_data))
 
-        self.samples = train[0] + train[1] + test[0] + test[1]
-        self.data = {'train': train, 'test': test}
+        self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
+        self.data = {'train': train, 'valid': valid, 'test': test}
 
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
@@ -43,53 +47,51 @@ class QuoraEval(object):
             logging.info("Saved data to %s", fpath + '.pkl')
         return data
 
+    def loadTest(self, data_file, max_seq_len, load_data):
+        if os.path.exists(data_file + '.pkl') and load_data:
+            data = pkl.load(open(data_file + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", data_file + '.pkl')
+        else:
+            data = load_tsv(data_file, max_seq_len, s1_idx=2, s2_idx=3, targ_idx=4, skip_rows=1)
+            pkl.dump(data, open(data_file + '.pkl', 'wb'))
+            logging.info("Saved data to %s", data_file + '.pkl')
+        return data
 
     def run(self, params, batcher):
-        embed = {'train': {}, 'test': {}}
-
+        self.X, self.y = {}, {}
         for key in self.data:
-            logging.info('Computing embedding for {0}'.format(key))
-            # Sort to reduce padding
-            text_data = {}
-            sorted_corpus = sorted(zip(self.data[key][0], self.data[key][1], self.data[key][2]),
-                                   key=lambda z: (len(z[0]), len(z[1]), z[2]))
+            if key not in self.X:
+                self.X[key] = []
+            if key not in self.y:
+                self.y[key] = []
 
-            text_data['A'] = [x for (x, y, z) in sorted_corpus]
-            text_data['B'] = [y for (x, y, z) in sorted_corpus]
-            text_data['y'] = [z for (x, y, z) in sorted_corpus]
+            input1, input2, mylabels = self.data[key]
+            enc_input = []
+            n_labels = len(mylabels)
+            for ii in range(0, n_labels, params.batch_size):
+                batch1 = input1[ii:ii + params.batch_size]
+                batch2 = input2[ii:ii + params.batch_size]
 
-            for txt_type in ['A', 'B']:
-                embed[key][txt_type] = []
-                for ii in range(0, len(text_data['y']), params.batch_size):
-                    batch = text_data[txt_type][ii:ii + params.batch_size]
-                    embeddings = batcher(params, batch)
-                    embed[key][txt_type].append(embeddings)
-                embed[key][txt_type] = np.vstack(embed[key][txt_type])
-            embed[key]['y'] = np.array(text_data['y'])
-            logging.info('Computed {0} embeddings'.format(key))
+                if len(batch1) == len(batch2) and len(batch1) > 0:
+                    enc1 = batcher(params, batch1)
+                    enc2 = batcher(params, batch2)
+                    enc_input.append(np.hstack((enc1, enc2, enc1 * enc2, np.abs(enc1 - enc2))))
+                if (ii*params.batch_size) % (20000*params.batch_size) == 0:
+                    logging.info("PROGRESS (encoding): %.2f%%" % (100 * ii / n_labels))
+            self.X[key] = np.vstack(enc_input)
+            self.y[key] = mylabels
 
-        # Train
-        trainA = embed['train']['A']
-        trainB = embed['train']['B']
-        trainF = np.c_[np.abs(trainA - trainB), trainA * trainB]
-        trainY = embed['train']['y']
+        config = {'nclasses': 2, 'seed': self.seed, 'usepytorch': params.usepytorch,
+                  'cudaEfficient': True, 'nhid': params.nhid, 'noreg': False}
 
-        # Test
-        testA = embed['test']['A']
-        testB = embed['test']['B']
-        testF = np.c_[np.abs(testA - testB), testA * testB]
-        testY = embed['test']['y']
+        config_classifier = copy.deepcopy(params.classifier)
+        config_classifier['max_epoch'] = 15
+        config_classifier['epoch_size'] = 1
+        config['classifier'] = config_classifier
 
-        config = {'nclasses': 2, 'seed': self.seed,
-                  'usepytorch': params.usepytorch,
-                  'classifier': params.classifier,
-                  'nhid': params.nhid, 'kfold': params.kfold}
-        clf = KFoldClassifier(train={'X': trainF, 'y': trainY},
-                              test={'X': testF, 'y': testY}, config=config)
-
-        devacc, testacc, yhat = clf.run()
-        testf1 = round(100*f1_score(testY, yhat), 2)
-        logging.debug('Dev acc : {0} Test acc {1}; Test F1 {2} for Quora.\n'
-                      .format(devacc, testacc, testf1))
-        return {'devacc': devacc, 'acc': testacc, 'f1': testf1,
-                'ndev': len(trainA), 'ntest': len(testA)}
+        clf = SplitClassifier(self.X, self.y, config)
+        devacc, testacc, test_preds = clf.run()
+        testf1 = round(100*f1_score(self.y['test'], test_preds), 2)
+        logging.debug('Dev acc : {0} Test acc : {1} for Quora\n' .format(devacc, testacc))
+        return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': test_preds,
+                'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}

@@ -6,12 +6,13 @@
 #
 
 from __future__ import absolute_import, division, unicode_literals
-import sys
 import os
+import sys
 import logging
 import argparse
+import ipdb as pdb
 import torch
-from utils import get_tasks
+from utils import get_tasks, write_results
 
 # Set PATHs
 if "cs.nyu.edu" in os.uname()[1]:
@@ -46,8 +47,8 @@ def main(arguments):
     # Logistics
     parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
-    parser.add_argument("--log_file", help="File to log to", type=str,
-                        default=PATH_PREFIX+'ckpts/SentEval/infersent/log.log')
+    parser.add_argument("--out_dir", help="Dir to write preds to", type=str, default='')
+    parser.add_argument("--log_file", help="File to log to", type=str)
     parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
 
     # Task options
@@ -55,10 +56,10 @@ def main(arguments):
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
 
     # Model options
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
 
     # Classifier options
-    parser.add_argument("--cls_batch_size", help="Batch size to use", type=int, default=16)
+    parser.add_argument("--cls_batch_size", help="Batch size to use", type=int, default=64)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
@@ -71,7 +72,7 @@ def main(arguments):
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
             'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
-                                     'tenacity': 5, 'epoch_size': 4}
+            'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
 
     # Load InferSent model
     params_senteval['infersent'] = torch.load(INFERSENT_PATH)
@@ -81,7 +82,12 @@ def main(arguments):
     se = senteval.engine.SE(params_senteval, batcher, prepare)
     tasks = get_tasks(args.tasks)
     results = se.eval(tasks)
-    print(results)
+    if args.out_dir:
+        write_results(results, args.out_dir)
+    if not args.log_file:
+        print(results)
+    else:
+        logging.info(results)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

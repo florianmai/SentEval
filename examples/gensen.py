@@ -109,7 +109,7 @@ def main(arguments):
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
             'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
-                                     'tenacity': 5, 'epoch_size': 4}
+            'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
 
     # Load model
     gensen_1 = GenSenSingle(model_folder=args.folder_path, filename_prefix=args.prefix_1,

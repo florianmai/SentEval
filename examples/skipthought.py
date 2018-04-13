@@ -72,7 +72,7 @@ def main(arguments):
 
     # Classifier options
     parser.add_argument("--cls_batch_size", help="Batch size to use for classifiers",
-                        type=int, default=16)
+                        type=int, default=64)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
@@ -85,7 +85,7 @@ def main(arguments):
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
             'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
-                                     'tenacity': 5, 'epoch_size': 4}
+            'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
     params_senteval['encoder'] = skipthoughts.load_model()
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)

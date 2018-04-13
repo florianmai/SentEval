@@ -72,10 +72,10 @@ class WNLIEval(object):
             self.X[key] = np.vstack(enc_input)
             self.y[key] = mylabels
 
-        config = {'nclasses': 3, 'seed': self.seed,
+        config = {'nclasses': 2, 'seed': self.seed,
                   'usepytorch': params.usepytorch,
                   'cudaEfficient': True,
-                  'nhid': params.nhid, 'noreg': True}
+                  'nhid': params.nhid, 'noreg': False}
 
         config_classifier = copy.deepcopy(params.classifier)
         config_classifier['max_epoch'] = 15
@@ -83,9 +83,8 @@ class WNLIEval(object):
         config['classifier'] = config_classifier
 
         clf = SplitClassifier(self.X, self.y, config)
-        devacc, testacc = clf.run()
+        devacc, testacc, test_preds = clf.run()
         logging.debug('Dev acc : {0} Test acc : {1} for WNLI\n'
                       .format(devacc, testacc))
-        return {'devacc': devacc, 'acc': testacc,
-                'ndev': len(self.data['valid'][0]),
-                'ntest': len(self.data['test'][0])}
+        return {'devacc': devacc, 'acc': testacc, 'preds': test_preds,
+                'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}

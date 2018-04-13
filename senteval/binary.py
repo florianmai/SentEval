@@ -56,8 +56,8 @@ class BinaryClassifierEval(object):
         clf = InnerKFoldClassifier(enc_input, np.array(sorted_labels), config)
         devacc, testacc = clf.run()
         logging.debug('Dev acc : {0} Test acc : {1}\n'.format(devacc, testacc))
-        return {'devacc': devacc, 'acc': testacc, 'ndev': self.n_samples,
-                'ntest': self.n_samples}
+        return {'devacc': devacc, 'acc': testacc, 'preds': test_preds,
+                'ndev': self.n_samples, 'ntest': self.n_samples}
 
 
 class CREval(BinaryClassifierEval):
