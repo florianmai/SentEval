@@ -98,7 +98,8 @@ class WarstadtEval(object):
 
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc, test_preds = clf.run()
-        logging.debug('Dev acc : {0} Test acc : {1} for Warstadt Acceptability Judgements\n'
-                      .format(devacc, testacc))
-        return {'devacc': devacc, 'acc': testacc, 'mcc': matthews_corrcoef(self.y['test'], test_preds.squeeze()),
+        test_mcc = matthews_corrcoef(self.y['test'], test_preds.squeeze())
+        logging.debug('Dev acc : {0} Test acc : {1} Test MCC : {2} for Warstadt Acceptability Judgements\n'
+                      .format(devacc, testacc, test_mcc))
+        return {'devacc': devacc, 'acc': testacc, 'mcc': test_mcc,
                 'preds': test_preds, 'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}

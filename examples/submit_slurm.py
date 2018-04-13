@@ -13,9 +13,9 @@ else:
     DEVICE = 'p40'
 
 proj_name = 'SentEval'
-model = 'bow'
+model = 'infersent'
 exp_name = model # need to make the folders if don't exist
-run_name = 'benchmark_v4'
+run_name = 'benchmark_v5'
 run_dir = "%s/ckpts/%s/%s/%s" % (PATH_PREFIX, proj_name, exp_name, run_name)
 if not os.path.exists(run_dir):
     os.makedirs(run_dir)

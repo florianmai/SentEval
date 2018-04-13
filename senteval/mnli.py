@@ -133,7 +133,7 @@ class MNLIEval(object):
         d_preds = clf.clf.predict(self.X['diagnostic'])
         d_preds = sort_preds(d_preds.squeeze().tolist(), self.idxs['diagnostic'])
 
-        logging.debug('Dev acc : {0} Test acc : {1} for MNLI\n'.format(devacc, testacc))
+        logging.debug('Dev acc : {0} Matched test acc : {1} Mismatched test acc: {2} for MNLI\n'.format(devacc, testacc, mm_acc))
         return {'devacc': devacc,
                 'matched_acc': testacc, 'preds': test_preds,
                 'mismatched_acc': mm_acc, 'mismatched_preds': mm_preds,

@@ -14,7 +14,7 @@ import sys
 import torch
 import logging
 import argparse
-from utils import get_tasks
+from utils import get_tasks, write_results
 
 if "cs.nyu.edu" in os.uname()[1]:
     PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'

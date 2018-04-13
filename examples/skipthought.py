@@ -16,7 +16,7 @@ import sys
 import argparse
 import logging
 
-from utils import get_tasks
+from utils import get_tasks, write_results
 
 # Set PATHs
 if "cs.nyu.edu" in os.uname()[1]:

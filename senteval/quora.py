@@ -92,6 +92,6 @@ class QuoraEval(object):
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc, test_preds = clf.run()
         testf1 = round(100*f1_score(self.y['test'], test_preds), 2)
-        logging.debug('Dev acc : {0} Test acc : {1} for Quora\n' .format(devacc, testacc))
+        logging.debug('Dev acc : {0} Test acc : {1} , Test f1: {2} for Quora\n' .format(devacc, testacc, testf1))
         return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': test_preds,
                 'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}
