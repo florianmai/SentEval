@@ -74,6 +74,7 @@ def main(arguments):
     # Logistics
     parser.add_argument("--gpu_id", help="gpu id to use", type=int, default=0)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=0)
+    parser.add_argument("--out_dir", help="Dir to write preds to", type=str, default='')
     parser.add_argument("--log_file", help="File to log to", type=str,
                         default=PATH_PREFIX + 'ckpts/SentEval/gensen/log.log')
     parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
@@ -125,7 +126,12 @@ def main(arguments):
     se = senteval.engine.SE(params_senteval, batcher, prepare)
     tasks = get_tasks(args.tasks)
     results = se.eval(tasks)
-    print(results)
+    if args.out_dir:
+        write_results(results, args.out_dir)
+    if not args.log_file:
+        print(results)
+    else:
+        logging.info(results)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

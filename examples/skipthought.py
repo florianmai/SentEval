@@ -57,16 +57,16 @@ def main(arguments):
     # Logistics
     parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
+    parser.add_argument("--out_dir", help="Dir to write preds to", type=str, default='')
     parser.add_argument("--log_file", help="File to log to", type=str)
     parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
-
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
 
     # Model options
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
+    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
     parser.add_argument("--dict_file", help="File to load dict from", type=str)
     parser.add_argument("--model_file", help="File to load model from", type=str)
 
@@ -91,7 +91,12 @@ def main(arguments):
     se = senteval.engine.SE(params_senteval, batcher, prepare)
     tasks = get_tasks(args.tasks)
     results = se.eval(tasks)
-    print(results)
+    if args.out_dir:
+        write_results(results, args.out_dir)
+    if not args.log_file:
+        print(results)
+    else:
+        logging.info(results)
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
