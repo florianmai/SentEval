@@ -13,7 +13,7 @@ else:
     DEVICE = 'p40'
 
 proj_name = 'SentEval'
-model = 'skipthought'
+model = 'bow'
 exp_name = model # need to make the folders if don't exist
 run_name = 'benchmark_v4'
 run_dir = "%s/ckpts/%s/%s/%s" % (PATH_PREFIX, proj_name, exp_name, run_name)
@@ -33,7 +33,7 @@ max_seq_len = '40'
 
 py_args = [model, tasks, log_file, use_pytorch, cls_batch_size, batch_size, max_seq_len, run_dir]
 
-slurm = 0
+slurm = 1
 
 if slurm:
     cmd = ['sbatch'] + slurm_args + ['run_stuff.sh'] + py_args
@@ -41,7 +41,6 @@ else:
     cmd = ['./run_stuff.sh'] + py_args
 print(' '.join(cmd))
 subprocess.call(cmd)
-time.sleep(10)
 
 ############################
 # MAKE SURE YOU CHANGE:

@@ -118,7 +118,7 @@ class PyTorchClassifier(object):
         if not isinstance(devX, torch.cuda.FloatTensor) and not self.cudaEfficient:
             devX = torch.FloatTensor(devX).cuda()
             devy = torch.LongTensor(devy).cuda()
-        else:
+        elif not isinstance(devX, (torch.FloatTensor, torch.cuda.FloatTensor)):
             devX = torch.FloatTensor(devX)
             devy = torch.LongTensor(devy)
         for i in range(0, len(devX), self.batch_size):
@@ -137,7 +137,7 @@ class PyTorchClassifier(object):
         self.model.eval()
         if not isinstance(devX, torch.cuda.FloatTensor) and not self.cudaEfficient:
             devX = torch.FloatTensor(devX).cuda()
-        else:
+        elif not isinstance(devX, (torch.cuda.FloatTensor, torch.FloatTensor)):
             devX = torch.FloatTensor(devX)
         yhat = np.array([])
         for i in range(0, len(devX), self.batch_size):
