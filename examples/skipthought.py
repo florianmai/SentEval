@@ -55,6 +55,7 @@ def main(arguments):
                     formatter_class=argparse.RawDescriptionHelpFormatter)
 
     # Logistics
+    parser.add_argument("--seed", help="Random seed", type=int, default=19)
     parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
     parser.add_argument("--out_dir", help="Dir to write preds to", type=str, default='')
@@ -83,7 +84,8 @@ def main(arguments):
 
     # Set params for SentEval
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
-            'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data}
+            'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data,
+            'seed': args.seed}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
             'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
     params_senteval['encoder'] = skipthoughts.load_model()

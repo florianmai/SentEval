@@ -73,6 +73,7 @@ def main(arguments):
 
     # Logistics
     parser.add_argument("--gpu_id", help="gpu id to use", type=int, default=0)
+    parser.add_argument("--seed", help="Random seed", type=int, default=19)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=0)
     parser.add_argument("--out_dir", help="Dir to write preds to", type=str, default='')
     parser.add_argument("--log_file", help="File to log to", type=str,
@@ -108,7 +109,8 @@ def main(arguments):
 
     # Set up SentEval
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
-            'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data}
+            'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data,
+            'seed': args.seed}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
             'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
 

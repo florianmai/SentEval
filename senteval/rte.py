@@ -23,7 +23,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 
 from senteval.tools.validation import KFoldClassifier
-from senteval.tools.utils import process_sentence, load_tsv, sort_split
+from senteval.tools.utils import process_sentence, load_tsv, sort_split, load_test, sort_preds
 
 
 class RTEEval(object):
@@ -37,8 +37,11 @@ class RTEEval(object):
                  "rte1_annotated_test.xml", "RTE5_MainTask_TestSet_Gold.xml"]
         train = sort_split(self.loadFile([os.path.join(taskpath, dev) for dev in devs],
                            max_seq_len, load_data, os.path.join(taskpath, 'rte')))
-        test = sort_split(self.loadFile([os.path.join(taskpath, test) for test in tests],
-                          max_seq_len, load_data, os.path.join(taskpath, 'rte')))
+        #test = sort_split(self.loadFile([os.path.join(taskpath, test) for test in tests],
+        #                  max_seq_len, load_data, os.path.join(taskpath, 'rte')))
+        test = sort_split(self.loadTest(os.path.join(taskpath, "rte_test_ans.tsv"),
+                          max_seq_len, load_data))
+
         self.samples = train[0] + train[1] + test[0] + test[1]
         self.data = {'train': train, 'test': test}
 
@@ -51,8 +54,8 @@ class RTEEval(object):
             sents1, sents2, targs = pkl.load(open(load_file + '.pkl', 'rb'))
             logging.info("Loaded data from %s", load_file + '.pkl')
         else:
-            targ_map = {"YES": 0, "ENTAILMENT": 0, "TRUE": 0,
-                        "NO": 1, "CONTRADICTION": 1, "FALSE": 1, "UNKNOWN": 1}
+            targ_map = {"YES": 1, "ENTAILMENT": 1, "TRUE": 1,
+                        "NO": 0, "CONTRADICTION": 0, "FALSE": 0, "UNKNOWN": 0}
             sents1, sents2, targs = [], [], []
             for path in  paths:
                 root = xml.etree.ElementTree.parse(path).getroot()
@@ -69,6 +72,18 @@ class RTEEval(object):
             logging.info("Saved data to %s", load_file + '.pkl')
         return sents1, sents2, targs
 
+    def loadTest(self, data_file, max_seq_len, load_data):
+        '''Load indexed data'''
+        if os.path.exists(data_file + '.pkl') and load_data:
+            data = pkl.load(open(data_file + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", data_file + '.pkl')
+        else:
+            targ_map = {"entailment": 1, "not_entailment": 0}
+            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=3,
+                             idx_idx=0, skip_rows=1, targ_map=targ_map)
+            pkl.dump(data, open(data_file + '.pkl', 'wb'))
+            logging.info("Saved data to %s", data_file + '.pkl')
+        return data
 
     def run(self, params, batcher):
         embed = {'train': {}, 'test': {}}
@@ -77,12 +92,22 @@ class RTEEval(object):
             logging.info('Computing embedding for {0}'.format(key))
             # Sort to reduce padding
             text_data = {}
-            sorted_corpus = sorted(zip(self.data[key][0], self.data[key][1], self.data[key][2]),
-                                   key=lambda z: (len(z[0]), len(z[1]), z[2]))
+            if key == "train":
+                sorted_corpus = sorted(zip(self.data[key][0], self.data[key][1], self.data[key][2]),
+                                       key=lambda z: (len(z[0]), len(z[1]), z[2]))
+                text_data['A'] = [x for (x, y, z) in sorted_corpus]
+                text_data['B'] = [y for (x, y, z) in sorted_corpus]
+                text_data['y'] = [z for (x, y, z) in sorted_corpus]
+            else:
+                sorted_corpus = sorted(zip(self.data[key][0], self.data[key][1],
+                                       self.data[key][2], self.data[key][3]),
+                                       key=lambda z: (len(z[0]), len(z[1]), z[2], z[3]))
+                text_data['A'] = [x for (x, y, z, idx) in sorted_corpus]
+                text_data['B'] = [y for (x, y, z, idx) in sorted_corpus]
+                text_data['y'] = [z for (x, y, z, idx) in sorted_corpus]
+                text_data['idx'] = [idx for (x, y, z, idx) in sorted_corpus]
+                embed[key]['idx'] = text_data['idx']
 
-            text_data['A'] = [x for (x, y, z) in sorted_corpus]
-            text_data['B'] = [y for (x, y, z) in sorted_corpus]
-            text_data['y'] = [z for (x, y, z) in sorted_corpus]
 
             for txt_type in ['A', 'B']:
                 embed[key][txt_type] = []
@@ -113,8 +138,9 @@ class RTEEval(object):
                               test={'X': testF, 'y': testY}, config=config)
 
         devacc, testacc, yhat = clf.run()
+        test_preds = sort_preds(yhat.squeeze().tolist(), embed['test']['idx'])
         testf1 = round(100*f1_score(testY, yhat), 2)
         logging.debug('Dev acc : {0} Test acc {1}; Test F1 {2} for RTE.\n'
                       .format(devacc, testacc, testf1))
-        return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': yhat,
+        return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': test_preds,
                 'ndev': len(trainA), 'ntest': len(testA)}

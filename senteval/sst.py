@@ -18,7 +18,7 @@ import cPickle as pkl
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier
-from senteval.tools.utils import process_sentence
+from senteval.tools.utils import process_sentence, load_test, sort_preds
 
 
 class SSTEval(object):
@@ -33,7 +33,9 @@ class SSTEval(object):
 
         train = self.loadFile(os.path.join(task_path, 'sentiment-train'), max_seq_len, load_data)
         dev = self.loadFile(os.path.join(task_path, 'sentiment-dev'), max_seq_len, load_data)
-        test = self.loadFile(os.path.join(task_path, 'sentiment-test'), max_seq_len, load_data)
+        #test = self.loadFile(os.path.join(task_path, 'sentiment-test'), max_seq_len, load_data)
+        test = self.loadTest(os.path.join(task_path, 'sst_binary_test_ans.tsv'), max_seq_len,
+                             load_data)
         self.samples = train['X'] + dev['X'] + test['X']
         self.sst_data = {'train': train, 'dev': dev, 'test': test}
 
@@ -61,6 +63,18 @@ class SSTEval(object):
             logging.info("Saved data to %s", fpath + '.%d.pkl' % self.nclasses)
         return sst_data
 
+    def loadTest(self, data_file, max_seq_len, load_data):
+        '''Load indexed data'''
+        if os.path.exists(data_file + '.pkl') and load_data:
+            data = pkl.load(open(data_file + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", data_file + '.pkl')
+        else:
+            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=None, targ_idx=2,
+                             idx_idx=0, skip_rows=1)
+            pkl.dump(data, open(data_file + '.pkl', 'wb'))
+            logging.info("Saved data to %s", data_file + '.pkl')
+        return {'X': data[0], 'y': data[1], 'idx': data[2]}
+
     def run(self, params, batcher):
         sst_embed = {'train': {}, 'dev': {}, 'test': {}}
         bsize = params.batch_size
@@ -68,10 +82,16 @@ class SSTEval(object):
         for key in self.sst_data:
             logging.info('Computing embedding for {0}'.format(key))
             # Sort to reduce padding
-            sorted_data = sorted(zip(self.sst_data[key]['X'],
-                                     self.sst_data[key]['y']),
-                                 key=lambda z: (len(z[0]), z[1]))
-            self.sst_data[key]['X'], self.sst_data[key]['y'] = map(list, zip(*sorted_data))
+            if key == 'test':
+                sorted_data = sorted(zip(self.sst_data[key]['X'], self.sst_data[key]['y'], self.sst_data[key]['idx']),
+                                     key=lambda z: (len(z[0]), z[1], z[2]))
+                self.sst_data[key]['X'], self.sst_data[key]['y'], self.sst_data[key]['idx'] = \
+                        map(list, zip(*sorted_data))
+                sst_embed[key]['idx'] = self.sst_data[key]['idx']
+            else:
+                sorted_data = sorted(zip(self.sst_data[key]['X'], self.sst_data[key]['y']),
+                                     key=lambda z: (len(z[0]), z[1]))
+                self.sst_data[key]['X'], self.sst_data[key]['y'] = map(list, zip(*sorted_data))
 
             sst_embed[key]['X'] = []
             for ii in range(0, len(self.sst_data[key]['y']), bsize):
@@ -95,8 +115,8 @@ class SSTEval(object):
                               config=config_classifier)
 
         devacc, testacc, test_preds = clf.run()
+        test_preds = sort_preds(test_preds.squeeze().tolist(), sst_embed['test']['idx'])
         logging.debug('\nDev acc : {0} Test acc : {1} for \
             SST {2} classification\n'.format(devacc, testacc, self.task_name))
-
         return {'devacc': devacc, 'acc': testacc, 'preds': test_preds,
                 'ndev': len(sst_embed['dev']['X']), 'ntest': len(sst_embed['test']['X'])}

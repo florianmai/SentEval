@@ -12,7 +12,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 
 from senteval.tools.validation import SplitClassifier #KFoldClassifier
-from senteval.tools.utils import process_sentence, load_tsv, sort_split, split_split
+from senteval.tools.utils import process_sentence, load_tsv, sort_split, split_split, load_test, sort_preds
 
 
 class QuoraEval(object):
@@ -24,7 +24,8 @@ class QuoraEval(object):
         train, valid = split_split(train)
         train = sort_split(train)
         valid = sort_split(valid)
-        test = sort_split(self.loadTest(os.path.join(taskpath, 'quora_test_ans.tsv'), max_seq_len, load_data))
+        test = sort_split(self.loadTest(os.path.join(taskpath, 'quora_test_ans.tsv'),
+                          max_seq_len, load_data))
 
         self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
         self.data = {'train': train, 'valid': valid, 'test': test}
@@ -58,14 +59,20 @@ class QuoraEval(object):
         return data
 
     def run(self, params, batcher):
-        self.X, self.y = {}, {}
+        self.X, self.y, self.idxs = {}, {}, {}
         for key in self.data:
             if key not in self.X:
                 self.X[key] = []
             if key not in self.y:
                 self.y[key] = []
+            if key not in self.idxs:
+                self.idxs[key] = []
 
-            input1, input2, mylabels = self.data[key]
+            if len(self.data[key]) == 3:
+                input1, input2, mylabels = self.data[key]
+            else:
+                input1, input2, mylabels, idxs = self.data[key]
+                self.idxs[key] = idxs
             enc_input = []
             n_labels = len(mylabels)
             for ii in range(0, n_labels, params.batch_size):
@@ -91,6 +98,7 @@ class QuoraEval(object):
 
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc, test_preds = clf.run()
+        test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
         testf1 = round(100*f1_score(self.y['test'], test_preds), 2)
         logging.debug('Dev acc : {0} Test acc : {1} , Test f1: {2} for Quora\n' .format(devacc, testacc, testf1))
         return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': test_preds,

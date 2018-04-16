@@ -28,7 +28,7 @@ class MNLIEval(object):
         targ_map = {'neutral': 0, 'entailment': 1, 'contradiction': 2}
         train = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_train.txt'),
                                          max_seq_len, targ_map, load_data))
-        valid = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_matched.txt'),
+        valid = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_both.txt'),
                                          max_seq_len, targ_map, load_data))
         test_m = self.loadTest(os.path.join(taskpath, 'mnli_matched_test_ans.tsv'),
                                           max_seq_len, targ_map, load_data)

@@ -208,7 +208,7 @@ class SICKEntailmentEval(SICKRelatednessEval):
                               y={'train': trainY, 'valid': devY, 'test': testY},
                               config=config)
 
-        devacc, testacc = clf.run()
+        devacc, testacc, _ = clf.run()
         logging.debug('\nDev acc : {0} Test acc : {1} for \
                        SICK entailment\n'.format(devacc, testacc))
         return {'devacc': devacc, 'acc': testacc,

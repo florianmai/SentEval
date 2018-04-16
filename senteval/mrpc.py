@@ -19,7 +19,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 
 from senteval.tools.validation import KFoldClassifier
-from senteval.tools.utils import process_sentence, load_tsv, load_test, sort_split
+from senteval.tools.utils import process_sentence, load_tsv, load_test, sort_split, sort_preds
 
 
 class MRPCEval(object):
@@ -126,11 +126,9 @@ class MRPCEval(object):
         clf = KFoldClassifier(train={'X': trainF, 'y': trainY},
                               test={'X': testF, 'y': testY}, config=config)
         devacc, testacc, yhat = clf.run()
+        test_preds = sort_preds(yhat.squeeze().tolist(), mrpc_embed['test']['idx'])
         testf1 = round(100*f1_score(testY, yhat), 2)
-        idxs_and_preds = [(idx, pred) for idx, pred in zip(testIdxs, yhat.squeeze().tolist())]
-        idxs_and_preds.sort(key=lambda x: x[0])
-        preds = [pred for _, pred in idxs_and_preds]
         logging.debug('Dev acc : {0} Test acc {1}; Test F1 {2} for MRPC.\n'
                       .format(devacc, testacc, testf1))
-        return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': preds,
+        return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': test_preds,
                 'ndev': len(trainA), 'ntest': len(testA)}

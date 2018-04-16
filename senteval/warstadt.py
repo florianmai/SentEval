@@ -18,7 +18,7 @@ import numpy as np
 from sklearn.metrics import matthews_corrcoef
 
 from senteval.tools.validation import SplitClassifier
-from senteval.tools.utils import process_sentence, load_tsv, load_test, sort_split
+from senteval.tools.utils import process_sentence, load_tsv, load_test, sort_split, sort_preds
 
 class WarstadtEval(object):
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
@@ -28,7 +28,7 @@ class WarstadtEval(object):
                                          max_seq_len, load_data), pair_input=0)
         valid = sort_split(self.loadFile(os.path.join(taskpath, 'acceptability_valid.tsv'),
                                          max_seq_len, load_data), pair_input=0)
-        test = sort_split(self.loadTest(os.path.join(taskpath, 'acceptability_test.tsv'),
+        test = sort_split(self.loadTest(os.path.join(taskpath, 'acceptability_test_ans.tsv'),
                                         max_seq_len, load_data), pair_input=0)
 
         self.samples = train[0] + valid[0] + test[0]
@@ -54,8 +54,8 @@ class WarstadtEval(object):
             data = pkl.load(open(data_file + '.pkl', 'rb'))
             logging.info("Loaded data from %s", data_file + '.pkl')
         else:
-            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=3, idx_idx=0,
-                             skip_rows=1)
+            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=None, targ_idx=2,
+                             idx_idx=0, skip_rows=1)
             pkl.dump(data, open(data_file + '.pkl', 'wb'))
             logging.info("Saved data to %s", data_file + '.pkl')
         return data
@@ -99,7 +99,9 @@ class WarstadtEval(object):
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc, test_preds = clf.run()
         test_mcc = matthews_corrcoef(self.y['test'], test_preds.squeeze())
+        test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
         logging.debug('Dev acc : {0} Test acc : {1} Test MCC : {2} for Warstadt Acceptability Judgements\n'
                       .format(devacc, testacc, test_mcc))
         return {'devacc': devacc, 'acc': testacc, 'mcc': test_mcc,
-                'preds': test_preds, 'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}
+                'preds': test_preds, 'ndev': len(self.data['valid'][0]),
+                'ntest': len(self.data['test'][0])}
