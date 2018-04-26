@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 Example of file for SkipThought in SentEval
 """
 import os
-import pdb
+import ipdb as pdb
 import sys
 import argparse
 import logging

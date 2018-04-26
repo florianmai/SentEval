@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division, unicode_literals
 import os
 import sys
+import json
 import logging
 import argparse
 import ipdb as pdb
@@ -17,27 +18,30 @@ from utils import get_tasks, write_results
 # Set PATHs
 if "cs.nyu.edu" in os.uname()[1]:
     PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
+    PROJ_PREFIX = '/home/awang/'
 else:
     PATH_PREFIX = '/beegfs/aw3272/'
-
-PATH_SENTEVAL = '../'
-PATH_TO_DATA = '../data/senteval_data/'
-PATH_TO_GLOVE = PATH_PREFIX + 'raw_data/GloVe/glove.840B.300d.txt'
-INFERSENT_PATH = 'infersent.allnli.pickle'
-
-assert os.path.isfile(INFERSENT_PATH) and os.path.isfile(PATH_TO_GLOVE), 'Set MODEL and GloVe PATHs'
+    PROJ_PREFIX = ''
 
 # import senteval
+PATH_SENTEVAL = '../'
 sys.path.insert(0, PATH_SENTEVAL)
 import senteval
 
-def prepare(params, samples):
-    params.infersent.build_vocab([' '.join(s) for s in samples], tokenize=False)
 
-def batcher(params, batch):
-    sentences = [' '.join(s) for s in batch]
-    embeddings = params.infersent.encode(sentences, bsize=params.batch_size, tokenize=False)
-    return embeddings
+PATH_TO_DATA = '../data/senteval_data/'
+PATH_TO_GLOVE = PATH_PREFIX + 'raw_data/GloVe/glove.840B.300d.txt'
+MODEL_PATH = PROJ_PREFIX + 'projects/Sentence-VAE'
+sys.path.insert(0, MODEL_PATH)
+from model import SentenceVAE
+
+def prepare(params, samples):
+    #params.infersent.build_vocab([' '.join(s) for s in samples], tokenize=False)
+    pass
+
+def batcher(params, sentences):
+    means, _ = params.model.encode(sentences)
+    return means
 
 def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__,
@@ -56,6 +60,18 @@ def main(arguments):
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
 
     # Model options
+    parser.add_argument("--ckpt_path", help="Path to ckpt to load", type=str,
+                        default=PATH_PREFIX + 'ckpts/svae/test/E18.pytorch')
+    parser.add_argument("--vocab_path", help="Path to vocab to use", type=str,
+                        default=PROJ_PREFIX + 'projects/Sentence-VAE/data/ptb.vocab.json')
+    parser.add_argument("--embedding_size", help="Word emb dim", type=int, default=300)
+    parser.add_argument("--word_dropout", help="Word emb dim", type=float, default=0.5)
+    parser.add_argument("--hidden_size", help="RNN size", type=int, default=256)
+    parser.add_argument("--latent_size", help="Latent vector dim", type=int, default=16)
+    parser.add_argument("--num_layers", help="Number of encoder layers", type=int, default=1)
+    parser.add_argument("--bidirectional", help="1 for bidirectional", type=bool, default=False)
+    parser.add_argument("--rnn_type", help="Type of rnn", type=str, choices=['rnn', 'gru'],
+                        default='gru')
     parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
 
     # Classifier options
@@ -76,8 +92,18 @@ def main(arguments):
             'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
 
     # Load InferSent model
-    params_senteval['infersent'] = torch.load(INFERSENT_PATH)
-    params_senteval['infersent'].set_glove_path(PATH_TO_GLOVE)
+    vocab = json.load(open(args.vocab_path, 'r'))
+    model = SentenceVAE(vocab['w2i'],
+                        #sos_idx=w2i['<sos>'], eos_idx=w2i['<eos>'], pad_idx=w2i['<pad>'],
+                        #max_sequence_length=args.max_seq_len,
+                        embedding_size=args.embedding_size,
+                        rnn_type=args.rnn_type, hidden_size=args.hidden_size,
+                        word_dropout=args.word_dropout, latent_size=args.latent_size,
+                        num_layers=args.num_layers, bidirectional=args.bidirectional)
+    model.load_state_dict(torch.load(args.ckpt_path))
+    model = model.cuda()
+    model.eval()
+    params_senteval['model'] = model
 
     # Do SentEval stuff
     se = senteval.engine.SE(params_senteval, batcher, prepare)

@@ -9,9 +9,11 @@ from __future__ import absolute_import, division, unicode_literals
 
 import os
 import sys
-import numpy as np
 import logging
 import argparse
+import ipdb as pdb
+
+import numpy as np
 
 import data
 from utils import get_tasks, write_results
@@ -36,6 +38,7 @@ def prepare(params, samples):
     return
 
 def batcher(params, batch):
+    pdb.set_trace()
     batch = [sent if sent != [] else ['.'] for sent in batch]
     embeddings = []
 

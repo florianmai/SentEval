@@ -50,7 +50,7 @@ class RTEEval(object):
 
     def loadFile(self, paths, max_seq_len, load_data, load_file):
         # Mapping the different label names to be consistent.
-        if os.path.exists(load_file+ '.pkl') and load_data:
+        if os.path.exists(load_file + '.pkl') and load_data:
             sents1, sents2, targs = pkl.load(open(load_file + '.pkl', 'rb'))
             logging.info("Loaded data from %s", load_file + '.pkl')
         else:

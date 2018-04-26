@@ -53,7 +53,8 @@ class QuoraEval(object):
             data = pkl.load(open(data_file + '.pkl', 'rb'))
             logging.info("Loaded data from %s", data_file + '.pkl')
         else:
-            data = load_tsv(data_file, max_seq_len, s1_idx=2, s2_idx=3, targ_idx=4, skip_rows=1)
+            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=3,
+                            idx_idx=0, skip_rows=1)
             pkl.dump(data, open(data_file + '.pkl', 'wb'))
             logging.info("Saved data to %s", data_file + '.pkl')
         return data
@@ -98,8 +99,8 @@ class QuoraEval(object):
 
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc, test_preds = clf.run()
-        test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
         testf1 = round(100*f1_score(self.y['test'], test_preds), 2)
+        test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
         logging.debug('Dev acc : {0} Test acc : {1} , Test f1: {2} for Quora\n' .format(devacc, testacc, testf1))
         return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': test_preds,
                 'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}

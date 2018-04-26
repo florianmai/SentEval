@@ -127,6 +127,7 @@ def main(arguments):
     # Do SentEval stuff
     se = senteval.engine.SE(params_senteval, batcher, prepare)
     tasks = get_tasks(args.tasks)
+    pdb.set_trace()
     results = se.eval(tasks)
     if args.out_dir:
         write_results(results, args.out_dir)

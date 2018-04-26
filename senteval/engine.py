@@ -11,6 +11,7 @@ Generic sentence evaluation scripts wrapper
 
 '''
 from __future__ import absolute_import, division, unicode_literals
+import ipdb as pdb
 
 from senteval import utils
 from senteval.binary import CREval, MREval, MPQAEval, SUBJEval
@@ -113,6 +114,7 @@ class SE(object):
         elif name == 'WNLI':
             self.evaluation = WNLIEval(tpath + '/WNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'Warstadt':
+            #self.evaluation = WarstadtEval(tpath + '/Warstadt_old', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
             self.evaluation = WarstadtEval(tpath + '/Warstadt', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'ANLI':
             self.evaluation = ANLIEval(tpath + '/ANLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
