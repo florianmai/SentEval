@@ -213,7 +213,7 @@ class SplitClassifier(object):
         regs = [10**t for t in range(-5, -1)] if self.usepytorch else \
                [2**t for t in range(-2, 4, 1)]
         if self.noreg:
-            regs = [0.]
+            regs = [1e-9 if self.usepytorch else 1e9]
         scores = []
         for reg in regs:
             logging.info('Training with regularization %.5f', reg)
