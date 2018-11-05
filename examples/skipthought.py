@@ -40,13 +40,8 @@ def prepare(params, samples):
     return
 
 def batcher(params, batch):
-    #batch = [str(' '.join(sent), errors="ignore") if sent != [] else '.' for sent in batch]
-    try:
-        #encoded_batch = [' '.join(sent).encode('utf-8') if sent != [] else '.' for sent in batch]
-        encoded_batch = [' '.join(sent) if sent != [] else '.' for sent in batch]
-        embeddings = skipthoughts.encode(params['encoder'], encoded_batch, verbose=False, use_eos=True)
-    except:
-        pdb.set_trace()
+    batch = [str(' '.join(sent), errors="ignore") if sent != [] else '.' for sent in batch]
+    embeddings = skipthoughts.encode(params['encoder'], batch, verbose=False, use_eos=True)
     return embeddings
 
 

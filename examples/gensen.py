@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (c) 2017-present, Facebook, Inc.
 # All rights reserved.
 #
@@ -6,34 +5,35 @@
 # LICENSE file in the root directory of this source tree.
 #
 
+"""
+Clone GenSen repo here: https://github.com/Maluuba/gensen.git
+And follow instructions for loading the model used in batcher
+"""
+
 from __future__ import absolute_import, division, unicode_literals
 
 import os
-import pdb
 import sys
-import torch
 import logging
 import argparse
+import torch
 from utils import get_tasks, write_results
 
-if "cs.nyu.edu" in os.uname()[1] or 'dgx' in os.uname()[1]:
-    PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
-else:
-    PATH_PREFIX = '/beegfs/aw3272/'
-
 # Set PATHs
-PATH_GENSEN = PATH_PREFIX + '/models/GenSen-master/'
-PATH_SENTEVAL = '../'
-PATH_TO_DATA = '../data/senteval_data/'
+PATH_TO_GENSEN = ''
+PATH_TO_SENTEVAL = '../'
+PATH_TO_DATA = '../data'
 
-# import senteval
-sys.path.insert(0, PATH_SENTEVAL)
-import senteval
+# import GenSen package
 sys.path.insert(0, PATH_GENSEN)
 from gensen import GenSen, GenSenSingle
-
 STRATEGY = "best"
 
+# import SentEval
+sys.path.insert(0, PATH_TO_SENTEVAL)
+import senteval
+
+# SentEval prepare and batcher
 def prepare(params, samples):
     print('Preparing task : %s ' % (params.current_task))
     vocab = set()
@@ -51,6 +51,7 @@ def prepare(params, samples):
     # If you want to turn off vocab expansion just comment out the below line.
     params['gensen'].vocab_expansion(vocab)
 
+    return
 
 def batcher(params, batch):
     # batch contains list of words
@@ -65,6 +66,14 @@ def batcher(params, batch):
 
     sentences = [' '.join(s).lower() for s in batch]
     _, embeddings = params['gensen'].get_representation(sentences, pool=strategy, return_numpy=True)
+
+    # current SentEval code
+    #batch = [' '.join(sent) if sent != [] else '.' for sent in batch]
+    #_, reps_h_t = gensen.get_representation(
+    #    sentences, pool='last', return_numpy=True, tokenize=True
+    #)
+    #embeddings = reps_h_t
+
     return embeddings
 
 def main(arguments):
@@ -135,5 +144,31 @@ def main(arguments):
     else:
         logging.info(results)
 
+# Load GenSen model
+gensen_1 = GenSenSingle(
+    model_folder='../data/models',
+    filename_prefix='nli_large_bothskip',
+    pretrained_emb='../data/embedding/glove.840B.300d.h5'
+)
+gensen_2 = GenSenSingle(
+    model_folder='../data/models',
+    filename_prefix='nli_large_bothskip_parse',
+    pretrained_emb='../data/embedding/glove.840B.300d.h5'
+)
+gensen_encoder = GenSen(gensen_1, gensen_2)
+reps_h, reps_h_t = gensen.get_representation(
+    sentences, pool='last', return_numpy=True, tokenize=True
+)
+
+# Set params for SentEval
+params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 5}
+params_senteval['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
+                                 'tenacity': 3, 'epoch_size': 2}
+params_senteval['gensen'] = gensen_encoder
+
+# Set up logger
+logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
+
