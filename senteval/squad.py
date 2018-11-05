@@ -27,10 +27,12 @@ class SQuADEval(object):
         logging.debug('***** Transfer task : SQuAD Classification *****\n\n')
         self.seed = seed
 
-        train = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_train.json"), max_seq_len, load_data))
-        valid = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_dev.json"), max_seq_len, load_data))
-        #test = sort_split(self.loadFile(os.path.join(taskpath, "adv_squad_test.json"), max_seq_len, load_data))
-        test = sort_split(self.loadTest(os.path.join(taskpath, "squad_test_ans.tsv"), max_seq_len, load_data))
+        train = sort_split(self.loadFile(os.path.join(taskpath, "train.tsv"),
+                                         max_seq_len, load_data))
+        valid = sort_split(self.loadFile(os.path.join(taskpath, "dev.tsv"),
+                                         max_seq_len, load_data))
+        test = sort_split(self.loadTest(os.path.join(taskpath, "test.tsv"),
+                                        max_seq_len, load_data))
 
         # sort data (by s2 first) to reduce padding
         self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
@@ -42,19 +44,14 @@ class SQuADEval(object):
     def loadFile(self, fpath, max_seq_len, load_data):
         '''Load a single split'''
         if os.path.exists(fpath + '.pkl') and load_data:
-            quests, ctxs, targs = pkl.load(open(fpath + '.pkl', 'rb'))
+            data = pkl.load(open(fpath + '.pkl', 'rb'))
             logging.info("Loaded data from %s", fpath + '.pkl')
         else:
-            quests, ctxs, targs = [], [], []
-            data = json.load(open(fpath))
-            for datum in data:
-                quests.append(process_sentence(datum['question'], max_seq_len))
-                ctxs.append(process_sentence(datum['sentence'], max_seq_len))
-                assert datum['label'] in ['True', 'False'], pdb.set_trace()
-                targs.append(int(datum['label'] == 'True'))
-            pkl.dump((quests, ctxs, targs), open(fpath + '.pkl', 'wb'))
+            data = load_tsv(fpath, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=3,
+                            targ_map={'entailment':1, 'not_entailment':0})
+            pkl.dump(data, open(fpath + '.pkl', 'wb'))
             logging.info("Saved data to %s", fpath + '.pkl')
-        return quests, ctxs, targs
+        return data
 
     def loadTest(self, data_file, max_seq_len, load_data):
         '''Load indexed data'''
@@ -62,9 +59,9 @@ class SQuADEval(object):
             data = pkl.load(open(data_file + '.pkl', 'rb'))
             logging.info("Loaded data from %s", data_file + '.pkl')
         else:
-            targ_map = {'not_contain': 0, 'contains': 1}
-            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=3,
-                             idx_idx=0, skip_rows=1, targ_map=targ_map)
+            targ_map = {'not_entailment': 0, 'entailment': 1}
+            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=None,
+                             idx_idx=0, targ_map=targ_map)
             pkl.dump(data, open(data_file + '.pkl', 'wb'))
             logging.info("Saved data to %s", data_file + '.pkl')
         return data
@@ -79,11 +76,15 @@ class SQuADEval(object):
             if key not in self.idxs:
                 self.idxs[key] = []
 
-            if len(self.data[key]) == 3:
-                input1, input2, mylabels = self.data[key]
-            else:
-                input1, input2, mylabels, idxs = self.data[key]
+            if key == 'test':
+                if len(self.data[key]) == 3:
+                    input1, input2, idxs = self.data[key]
+                    mylabels = [0] * len(idxs)
+                elif len(self.data[key]) == 4:
+                    input1, input2, mylabels, idxs = self.data[key]
                 self.idxs[key]= idxs
+            else:
+                input1, input2, mylabels = self.data[key]
             enc_input = []
             n_labels = len(mylabels)
             for ii in range(0, n_labels, params.batch_size):

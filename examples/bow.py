@@ -38,7 +38,6 @@ def prepare(params, samples):
     return
 
 def batcher(params, batch):
-    pdb.set_trace()
     batch = [sent if sent != [] else ['.'] for sent in batch]
     embeddings = []
 

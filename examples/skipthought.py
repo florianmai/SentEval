@@ -19,7 +19,7 @@ import logging
 from utils import get_tasks, write_results
 
 # Set PATHs
-if "cs.nyu.edu" in os.uname()[1]:
+if "cs.nyu.edu" in os.uname()[1] or "dgx" in os.uname()[1]:
     PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
 else:
     PATH_PREFIX = '/beegfs/aw3272/'

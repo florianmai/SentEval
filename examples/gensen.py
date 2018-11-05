@@ -16,7 +16,7 @@ import logging
 import argparse
 from utils import get_tasks, write_results
 
-if "cs.nyu.edu" in os.uname()[1]:
+if "cs.nyu.edu" in os.uname()[1] or 'dgx' in os.uname()[1]:
     PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
 else:
     PATH_PREFIX = '/beegfs/aw3272/'
@@ -127,7 +127,6 @@ def main(arguments):
     # Do SentEval stuff
     se = senteval.engine.SE(params_senteval, batcher, prepare)
     tasks = get_tasks(args.tasks)
-    pdb.set_trace()
     results = se.eval(tasks)
     if args.out_dir:
         write_results(results, args.out_dir)

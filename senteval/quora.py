@@ -11,7 +11,7 @@ import cPickle as pkl
 import numpy as np
 from sklearn.metrics import f1_score
 
-from senteval.tools.validation import SplitClassifier #KFoldClassifier
+from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, sort_split, split_split, load_test, sort_preds
 
 
@@ -19,12 +19,11 @@ class QuoraEval(object):
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : Quora Question Similarity*****\n\n')
         self.seed = seed
-        train = self.loadFile(os.path.join(taskpath, 'quora_duplicate_questions_clean.tsv'),
-                              max_seq_len, load_data)
-        train, valid = split_split(train)
-        train = sort_split(train)
-        valid = sort_split(valid)
-        test = sort_split(self.loadTest(os.path.join(taskpath, 'quora_test_ans.tsv'),
+        train = sort_split(self.loadFile(os.path.join(taskpath, 'train.tsv'),
+                              max_seq_len, load_data))
+        valid = sort_split(self.loadFile(os.path.join(taskpath, 'dev.tsv'),
+                              max_seq_len, load_data))
+        test = sort_split(self.loadTest(os.path.join(taskpath, 'test.tsv'),
                           max_seq_len, load_data))
 
         self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
@@ -43,7 +42,7 @@ class QuoraEval(object):
             data = pkl.load(open(fpath + '.pkl', 'rb'))
             logging.info("Loaded data from %s", fpath + '.pkl')
         else:
-            data = load_tsv(fpath, max_seq_len, s1_idx=3, s2_idx=4, targ_idx=5, skip_rows=1)
+            data = load_tsv(fpath, max_seq_len, s1_idx=3, s2_idx=4, targ_idx=5)
             pkl.dump(data, open(fpath + '.pkl', 'wb'))
             logging.info("Saved data to %s", fpath + '.pkl')
         return data
@@ -53,7 +52,7 @@ class QuoraEval(object):
             data = pkl.load(open(data_file + '.pkl', 'rb'))
             logging.info("Loaded data from %s", data_file + '.pkl')
         else:
-            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=3,
+            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=None,
                             idx_idx=0, skip_rows=1)
             pkl.dump(data, open(data_file + '.pkl', 'wb'))
             logging.info("Saved data to %s", data_file + '.pkl')
@@ -69,11 +68,15 @@ class QuoraEval(object):
             if key not in self.idxs:
                 self.idxs[key] = []
 
-            if len(self.data[key]) == 3:
-                input1, input2, mylabels = self.data[key]
+            if key == 'test':
+                if len(self.data[key]) == 3:
+                    input1, input2, idxs = self.data[key]
+                    mylabels = [0] * len(idxs)
+                elif len(self.data[key]) == 4:
+                    input1, input2, mylabels, idxs = self.data[key]
+                self.idxs[key]= idxs
             else:
-                input1, input2, mylabels, idxs = self.data[key]
-                self.idxs[key] = idxs
+                input1, input2, mylabels = self.data[key]
             enc_input = []
             n_labels = len(mylabels)
             for ii in range(0, n_labels, params.batch_size):
@@ -99,8 +102,11 @@ class QuoraEval(object):
 
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc, test_preds = clf.run()
+        dev_preds = clf.clf.predict(self.X['valid'])
+        dev_f1 = round(100*f1_score(self.y['valid'], dev_preds), 2)
         testf1 = round(100*f1_score(self.y['test'], test_preds), 2)
         test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
-        logging.debug('Dev acc : {0} Test acc : {1} , Test f1: {2} for Quora\n' .format(devacc, testacc, testf1))
-        return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': test_preds,
+        logging.debug('Dev acc : {0} Dev f1: {3} Test acc : {1} , Test f1: {2} for Quora\n' .format(devacc, testacc, testf1, dev_f1))
+        return {'devacc': devacc, 'devf1': dev_f1,
+                'acc': testacc, 'f1': testf1, 'preds': test_preds,
                 'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}

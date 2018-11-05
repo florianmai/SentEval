@@ -82,6 +82,7 @@ class RelatednessPytorch(object):
             self.test['X'], self.test['y'])
 
         # Training
+        bestmodel = self.model
         while not stop_train and self.nepoch <= self.maxepoch:
             self.trainepoch(trainX, trainy, nepoches=50)
             yhat = np.dot(self.predict_proba(devX), r)
@@ -96,9 +97,10 @@ class RelatednessPytorch(object):
                 early_stop_count += 1
         self.model = bestmodel
 
+        dev_preds = np.dot(self.predict_proba(devX), r)
         yhat = np.dot(self.predict_proba(testX), r)
 
-        return bestpr, yhat
+        return bestpr, yhat, dev_preds
 
     def trainepoch(self, X, y, nepoches=1):
         self.model.train()

@@ -33,14 +33,14 @@ PATH_TO_DATA = '../data/senteval_data/'
 PATH_TO_GLOVE = PATH_PREFIX + 'raw_data/GloVe/glove.840B.300d.txt'
 MODEL_PATH = PROJ_PREFIX + 'projects/Sentence-VAE'
 sys.path.insert(0, MODEL_PATH)
-from model import SentenceVAE
+from model import SentenceVAE, SentenceAE
 
 def prepare(params, samples):
     #params.infersent.build_vocab([' '.join(s) for s in samples], tokenize=False)
     pass
 
 def batcher(params, sentences):
-    means, _ = params.model.encode(sentences)
+    means = params.model.encode(sentences)
     return means
 
 def main(arguments):
@@ -61,12 +61,13 @@ def main(arguments):
 
     # Model options
     parser.add_argument("--ckpt_path", help="Path to ckpt to load", type=str,
-                        default=PATH_PREFIX + 'ckpts/svae/test/E18.pytorch')
+                        default=PATH_PREFIX + 'ckpts/svae/glue_svae/best.mdl')
     parser.add_argument("--vocab_path", help="Path to vocab to use", type=str,
-                        default=PROJ_PREFIX + 'projects/Sentence-VAE/data/ptb.vocab.json')
+                        default=PATH_PREFIX + 'processed_data/svae/glue_v2/vocab.json')
+    parser.add_argument("--model", help="Word emb dim", type=str, default='vae')
     parser.add_argument("--embedding_size", help="Word emb dim", type=int, default=300)
     parser.add_argument("--word_dropout", help="Word emb dim", type=float, default=0.5)
-    parser.add_argument("--hidden_size", help="RNN size", type=int, default=256)
+    parser.add_argument("--hidden_size", help="RNN size", type=int, default=512)
     parser.add_argument("--latent_size", help="Latent vector dim", type=int, default=16)
     parser.add_argument("--num_layers", help="Number of encoder layers", type=int, default=1)
     parser.add_argument("--bidirectional", help="1 for bidirectional", type=bool, default=False)
@@ -93,13 +94,23 @@ def main(arguments):
 
     # Load InferSent model
     vocab = json.load(open(args.vocab_path, 'r'))
-    model = SentenceVAE(vocab['w2i'],
-                        #sos_idx=w2i['<sos>'], eos_idx=w2i['<eos>'], pad_idx=w2i['<pad>'],
-                        #max_sequence_length=args.max_seq_len,
-                        embedding_size=args.embedding_size,
-                        rnn_type=args.rnn_type, hidden_size=args.hidden_size,
-                        word_dropout=args.word_dropout, latent_size=args.latent_size,
-                        num_layers=args.num_layers, bidirectional=args.bidirectional)
+    args.denoise = False
+    args.prob_swap, args.prob_drop = 0.0, 0.0
+    if args.model == 'vae':
+        model = SentenceVAE(args, vocab['w2i'],
+                            #sos_idx=w2i['<sos>'], eos_idx=w2i['<eos>'], pad_idx=w2i['<pad>'],
+                            #max_sequence_length=args.max_seq_len,
+                            embedding_size=args.embedding_size,
+                            rnn_type=args.rnn_type, hidden_size=args.hidden_size,
+                            word_dropout=args.word_dropout, latent_size=args.latent_size,
+                            num_layers=args.num_layers, bidirectional=args.bidirectional)
+    elif args.model == 'ae':
+        model = SentenceAE(args, vocab['w2i'],
+                           embedding_size=args.embedding_size,
+                           rnn_type=args.rnn_type, hidden_size=args.hidden_size,
+                           word_dropout=args.word_dropout, latent_size=args.latent_size,
+                           num_layers=args.num_layers, bidirectional=args.bidirectional)
+
     model.load_state_dict(torch.load(args.ckpt_path))
     model = model.cuda()
     model.eval()

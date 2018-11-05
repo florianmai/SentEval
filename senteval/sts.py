@@ -14,6 +14,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import os
 import io
+import ipdb as pdb
 import numpy as np
 import logging
 import cPickle as pkl
@@ -256,16 +257,18 @@ class STSBenchmarkEval(SICKRelatednessEval):
                                  devscores=self.sick_data['dev']['y'],
                                  config=config)
 
-        devpr, yhat = clf.run()
+        devpr, yhat, dev_preds = clf.run()
 
+        dev_sr = spearmanr(dev_preds, self.sick_data['dev']['y'])[0]
         pr = pearsonr(yhat, self.sick_data['test']['y'])[0]
         sr = spearmanr(yhat, self.sick_data['test']['y'])[0]
         se = mean_squared_error(yhat, self.sick_data['test']['y'])
         test_preds = sort_preds(yhat.squeeze().tolist(), sick_embed['test']['idx'])
-        logging.debug('Dev : Pearson {0}'.format(devpr))
+        logging.debug('Dev : Pearson {0} Spearman {1}'.format(devpr, dev_sr))
         logging.debug('Test : Pearson {0} Spearman {1} MSE {2} \
                        for SICK Relatedness\n'.format(pr, sr, se))
 
-        return {'devpearson': devpr, 'pearson': pr, 'spearman': sr, 'mse': se,
+        return {'devpearson': devpr, 'devspearman': dev_sr,
+                'pearson': pr, 'spearman': sr, 'mse': se,
                 'preds': test_preds, 'ndev': len(devA), 'ntest': len(testA)}
 

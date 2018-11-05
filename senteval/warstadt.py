@@ -24,11 +24,11 @@ class WarstadtEval(object):
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : Warstadt Acceptability*****\n\n')
         self.seed = seed
-        train = sort_split(self.loadFile(os.path.join(taskpath, 'acceptability_train.tsv'),
+        train = sort_split(self.loadFile(os.path.join(taskpath, 'train.tsv'),
                                          max_seq_len, load_data), pair_input=0)
-        valid = sort_split(self.loadFile(os.path.join(taskpath, 'acceptability_valid.tsv'),
+        valid = sort_split(self.loadFile(os.path.join(taskpath, 'dev.tsv'),
                                          max_seq_len, load_data), pair_input=0)
-        test = sort_split(self.loadTest(os.path.join(taskpath, 'acceptability_test_ans.tsv'),
+        test = sort_split(self.loadTest(os.path.join(taskpath, 'test.tsv'),
                                         max_seq_len, load_data), pair_input=0)
 
         self.samples = train[0] + valid[0] + test[0]
@@ -54,7 +54,7 @@ class WarstadtEval(object):
             data = pkl.load(open(data_file + '.pkl', 'rb'))
             logging.info("Loaded data from %s", data_file + '.pkl')
         else:
-            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=None, targ_idx=2,
+            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=None, targ_idx=None,
                              idx_idx=0, skip_rows=1)
             pkl.dump(data, open(data_file + '.pkl', 'wb'))
             logging.info("Saved data to %s", data_file + '.pkl')
@@ -70,11 +70,16 @@ class WarstadtEval(object):
             if key not in self.idxs:
                 self.idxs[key] = []
 
-            if len(self.data[key]) == 2:
-                input1, mylabels = self.data[key]
-            else:
-                input1, mylabels, idxs = self.data[key]
+            #if len(self.data[key]) == 2:
+            if key == 'test':
+                if len(self.data[key]) == 2:
+                    input1, idxs = self.data[key]
+                    mylabels = [0] * len(idxs)
+                elif len(self.data[key]) == 3:
+                    input1, mylabels, idxs = self.data[key]
                 self.idxs[key] = idxs
+            else:
+                input1, mylabels = self.data[key]
             enc_input = []
             n_labels = len(mylabels)
             for ii in range(0, n_labels, params.batch_size):
@@ -98,10 +103,12 @@ class WarstadtEval(object):
 
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc, test_preds = clf.run()
+        dev_preds = clf.clf.predict(self.X['valid'])
+        dev_mcc = matthews_corrcoef(self.y['valid'], dev_preds.squeeze())
         test_mcc = matthews_corrcoef(self.y['test'], test_preds.squeeze())
         test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
-        logging.debug('Dev acc : {0} Test acc : {1} Test MCC : {2} for Warstadt Acceptability Judgements\n'
-                      .format(devacc, testacc, test_mcc))
-        return {'devacc': devacc, 'acc': testacc, 'mcc': test_mcc,
+        logging.debug('Dev acc : {0} Dev MCC : {3} Test acc : {1} Test MCC : {2} for Warstadt Acceptability Judgements\n'
+                      .format(devacc, testacc, test_mcc, dev_mcc))
+        return {'devacc': devacc, 'devmcc': dev_mcc, 'acc': testacc, 'mcc': test_mcc,
                 'preds': test_preds, 'ndev': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}

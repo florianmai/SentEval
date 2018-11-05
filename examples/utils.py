@@ -27,7 +27,7 @@ def write_results(results, out_dir):
         elif task == 'RTE':
             pred_map = {0: 'not_entailment', 1: 'entailment'}
         elif task == 'SQuAD':
-            pred_map = {0: 'not_contain', 1: 'contains'}
+            pred_map = {0: 'not_entailment', 1: 'entailment'}
         else:
             pred_map = None
 

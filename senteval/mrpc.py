@@ -6,36 +6,46 @@
 #
 
 '''
-MRPC : Microsoft Research Paraphrase (detection) Corpus
+WNLI
 '''
 from __future__ import absolute_import, division, unicode_literals
 
-import io
 import os
-import logging
 import ipdb as pdb
+import copy
+import codecs
+import logging
 import cPickle as pkl
 import numpy as np
 from sklearn.metrics import f1_score
 
-from senteval.tools.validation import KFoldClassifier
+from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, load_test, sort_split, sort_preds
 
-
 class MRPCEval(object):
-    def __init__(self, task_path, max_seq_len, load_data, seed=1111):
-        logging.info('***** Transfer task : MRPC *****\n\n')
+    def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
+        logging.debug('***** Transfer task : MRPC *****\n\n')
         self.seed = seed
-        train = self.loadFile(os.path.join(task_path, 'msr_paraphrase_train.txt'), max_seq_len, load_data)
-        #test = self.loadFile(os.path.join(task_path, 'msr_paraphrase_test.txt'), max_seq_len, load_data)
-        #self.samples = train['X_A'] + train['X_B'] + test['X_A'] + test['X_B']
-        test = self.loadTest(os.path.join(task_path, 'msrp_test_ans.tsv'), max_seq_len, load_data)
-        self.samples = train['X_A'] + train['X_B'] + test[0] + test[1]
-        self.mrpc_data = {'train': train, 'test': test}
+        train = sort_split(self.loadFile(os.path.join(taskpath, 'train.tsv'), max_seq_len, load_data))
+        valid = sort_split(self.loadFile(os.path.join(taskpath, 'dev.tsv'), max_seq_len, load_data))
+        test = sort_split(self.loadTest(os.path.join(taskpath, 'test.tsv'), max_seq_len, load_data))
+
+        self.samples = train[0] + train[1] + valid[0] + valid[1] + test[0] + test[1]
+        self.data = {'train': train, 'valid': valid, 'test': test}
 
     def do_prepare(self, params, prepare):
-        # TODO : Should we separate samples in "train, test"?
         return prepare(params, self.samples)
+
+    def loadFile(self, fpath, max_seq_len, load_data):
+        '''Process the dataset located at path.'''
+        if os.path.exists(fpath + '.pkl') and load_data:
+            data = pkl.load(open(fpath + '.pkl', 'rb'))
+            logging.info("Loaded data from %s", fpath + '.pkl')
+        else:
+            data = load_tsv(fpath, max_seq_len, s1_idx=3, s2_idx=4, targ_idx=0)
+            pkl.dump(data, open(fpath + '.pkl', 'wb'))
+            logging.info("Saved data to %s", fpath + '.pkl')
+        return data
 
     def loadTest(self, data_file, max_seq_len, load_data):
         '''Load indexed data'''
@@ -43,92 +53,62 @@ class MRPCEval(object):
             data = pkl.load(open(data_file + '.pkl', 'rb'))
             logging.info("Loaded data from %s", data_file + '.pkl')
         else:
-            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=3, idx_idx=0,
-                             skip_rows=1)
+            data = load_test(data_file, max_seq_len, s1_idx=3, s2_idx=4, targ_idx=None,
+                             idx_idx=0, skip_rows=1)
             pkl.dump(data, open(data_file + '.pkl', 'wb'))
             logging.info("Saved data to %s", data_file + '.pkl')
         return data
 
-    def loadFile(self, fpath, max_seq_len, load_data):
-        if os.path.exists(fpath + '.pkl') and load_data:
-            mrpc_data = pkl.load(open(fpath + '.pkl', 'rb'))
-            logging.info("Loaded data from %s", fpath + '.pkl')
-        else:
-            mrpc_data = {'X_A': [], 'X_B': [], 'y': []}
-            with io.open(fpath, 'r', encoding='utf-8') as f:
-                for line in f:
-                    text = line.strip().split('\t')
-                    mrpc_data['X_A'].append(process_sentence(text[3], max_seq_len))
-                    mrpc_data['X_B'].append(process_sentence(text[4], max_seq_len))
-                    mrpc_data['y'].append(text[0])
-
-            mrpc_data['X_A'] = mrpc_data['X_A'][1:]
-            mrpc_data['X_B'] = mrpc_data['X_B'][1:]
-            mrpc_data['y'] = [int(s) for s in mrpc_data['y'][1:]]
-            pkl.dump(mrpc_data, open(fpath + '.pkl', 'wb'))
-            logging.info("Saved data to %s", fpath + '.pkl')
-        return mrpc_data
-
     def run(self, params, batcher):
-        mrpc_embed = {'train': {}, 'test': {}}
+        self.X, self.y, self.idxs = {}, {}, {}
+        for key in self.data:
+            if key not in self.X:
+                self.X[key] = []
+            if key not in self.y:
+                self.y[key] = []
+            if key not in self.idxs:
+                self.idxs[key] = []
 
-        for key in self.mrpc_data:
-            logging.info('Computing embedding for {0}'.format(key))
-            # Sort to reduce padding
-            text_data = {}
-            if key == 'train':
-                sorted_corpus = sorted(zip(self.mrpc_data[key]['X_A'],
-                                           self.mrpc_data[key]['X_B'],
-                                           self.mrpc_data[key]['y']),
-                                       key=lambda z: (len(z[0]), len(z[1]), z[2]))
-                text_data['A'] = [x for (x, y, z) in sorted_corpus]
-                text_data['B'] = [y for (x, y, z) in sorted_corpus]
-                text_data['y'] = [z for (x, y, z) in sorted_corpus]
+            if key == 'test':
+                if len(self.data[key]) == 4:
+                    input1, input2, mylabels, idxs = self.data[key]
+                elif len(self.data[key]) == 3:
+                    input1, input2, idxs = self.data[key]
+                    mylabels = [0] * len(idxs)
+                self.idxs[key] = idxs
             else:
-                sorted_corpus = sorted(zip(self.mrpc_data[key][0],
-                                           self.mrpc_data[key][1],
-                                           self.mrpc_data[key][2],
-                                           self.mrpc_data[key][3]),
-                                       key=lambda z: (len(z[0]), len(z[1]), z[2]))
-                text_data['A'] = [x for (x, y, z, w) in sorted_corpus]
-                text_data['B'] = [y for (x, y, z, w) in sorted_corpus]
-                text_data['y'] = [z for (x, y, z, w) in sorted_corpus]
-                text_data['idx'] = [w for (x, y, z, w) in sorted_corpus]
-                mrpc_embed[key]['idx'] = text_data['idx']
+                input1, input2, mylabels = self.data[key]
+            enc_input = []
+            n_labels = len(mylabels)
+            for ii in range(0, n_labels, params.batch_size):
+                batch1 = input1[ii:ii + params.batch_size]
+                batch2 = input2[ii:ii + params.batch_size]
 
-            for txt_type in ['A', 'B']:
-                mrpc_embed[key][txt_type] = []
-                for ii in range(0, len(text_data['y']), params.batch_size):
-                    batch = text_data[txt_type][ii:ii + params.batch_size]
-                    embeddings = batcher(params, batch)
-                    mrpc_embed[key][txt_type].append(embeddings)
-                mrpc_embed[key][txt_type] = np.vstack(mrpc_embed[key][txt_type])
-            mrpc_embed[key]['y'] = np.array(text_data['y'])
-            logging.info('Computed {0} embeddings'.format(key))
+                if len(batch1) == len(batch2) and len(batch1) > 0:
+                    enc1 = batcher(params, batch1)
+                    enc2 = batcher(params, batch2)
+                    enc_input.append(np.hstack((enc1, enc2, enc1 * enc2, np.abs(enc1 - enc2))))
+                if (ii*params.batch_size) % (20000*params.batch_size) == 0:
+                    logging.info("PROGRESS (encoding): %.2f%%" % (100 * ii / n_labels))
+            self.X[key] = np.vstack(enc_input)
+            self.y[key] = mylabels
 
-        # Train
-        trainA = mrpc_embed['train']['A']
-        trainB = mrpc_embed['train']['B']
-        trainF = np.c_[np.abs(trainA - trainB), trainA * trainB]
-        trainY = mrpc_embed['train']['y']
+        config = {'nclasses': 2, 'seed': self.seed, 'usepytorch': params.usepytorch,
+                  'cudaEfficient': True, 'nhid': params.nhid, 'noreg': False}
 
-        # Test
-        testA = mrpc_embed['test']['A']
-        testB = mrpc_embed['test']['B']
-        testF = np.c_[np.abs(testA - testB), testA * testB]
-        testY = mrpc_embed['test']['y']
-        testIdxs = mrpc_embed['test']['idx']
+        config_classifier = copy.deepcopy(params.classifier)
+        config_classifier['max_epoch'] = 15
+        config_classifier['epoch_size'] = 1
+        config['classifier'] = config_classifier
 
-        config = {'nclasses': 2, 'seed': self.seed,
-                  'usepytorch': params.usepytorch,
-                  'classifier': params.classifier,
-                  'nhid': params.nhid, 'kfold': params.kfold}
-        clf = KFoldClassifier(train={'X': trainF, 'y': trainY},
-                              test={'X': testF, 'y': testY}, config=config)
-        devacc, testacc, yhat = clf.run()
-        test_preds = sort_preds(yhat.squeeze().tolist(), mrpc_embed['test']['idx'])
-        testf1 = round(100*f1_score(testY, yhat), 2)
-        logging.debug('Dev acc : {0} Test acc {1}; Test F1 {2} for MRPC.\n'
-                      .format(devacc, testacc, testf1))
-        return {'devacc': devacc, 'acc': testacc, 'f1': testf1, 'preds': test_preds,
-                'ndev': len(trainA), 'ntest': len(testA)}
+        clf = SplitClassifier(self.X, self.y, config)
+        devacc, testacc, test_preds = clf.run()
+        dev_preds = clf.clf.predict(self.X['valid'])
+        dev_f1 = f1_score(self.y['valid'], dev_preds.squeeze().tolist())
+        test_f1 = f1_score(self.y['test'], test_preds.squeeze().tolist())
+        test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
+        logging.debug('Dev acc : {0} Dev f1: {1} Test acc : {2} Test f1: {3} for MRPC\n'
+                      .format(devacc, dev_f1, testacc, test_f1))
+        return {'devacc': devacc, 'devf1': dev_f1,
+                'acc': testacc, 'f1': test_f1, 'preds': test_preds,
+                'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}
