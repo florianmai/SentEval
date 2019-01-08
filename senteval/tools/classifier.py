@@ -131,7 +131,7 @@ class PyTorchClassifier(object):
             output = self.model(Xbatch)
             pred = output.data.max(1)[1]
             correct += pred.long().eq(ybatch.data.long()).sum()
-        accuracy = 1.0*correct / len(devX)
+        accuracy = 1.0*correct.float() / len(devX)
         return accuracy
 
     def predict(self, devX):

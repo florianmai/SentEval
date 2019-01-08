@@ -115,7 +115,7 @@ def sort_split(split, pair_input=1):
         sort_key = lambda x: (len(x[0]), len(x[1]))
     else:
         sort_key = lambda x: (len(x[0]))
-    return map(list, zip(*sorted(zip(*split), key=sort_key)))
+    return list(map(list, zip(*sorted(zip(*split), key=sort_key))))
 
 def sort_preds(preds, idxs):
     ''' Sort preds in order of increasing idx '''

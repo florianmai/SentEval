@@ -14,7 +14,7 @@ from __future__ import absolute_import, division, unicode_literals
 import os
 import io
 import logging
-import cPickle as pkl
+import _pickle as pkl
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier

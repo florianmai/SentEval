@@ -25,6 +25,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
 
 
+def _round(x, dez):
+    #return round(x.cpu().numpy(), dez)
+    return x
+
 def get_classif_name(classifier_config, usepytorch):
     if not usepytorch:
         modelname = 'sklearn-LogReg'
@@ -84,7 +88,7 @@ class InnerKFoldClassifier(object):
                         clf = LogisticRegression(C=reg, random_state=self.seed)
                         clf.fit(X_in_train, y_in_train)
                     regscores.append(clf.score(X_in_test, y_in_test))
-                scores.append(round(100*np.mean(regscores), 2))
+                scores.append(_round(100*np.mean(regscores), 2))
             optreg = regs[np.argmax(scores)]
             logging.info('Best param found at split {0}: l2reg = {1} \
                 with score {2}'.format(count, optreg, np.max(scores)))
@@ -100,10 +104,10 @@ class InnerKFoldClassifier(object):
                 clf = LogisticRegression(C=optreg, random_state=self.seed)
                 clf.fit(X_train, y_train)
 
-            self.testresults.append(round(100*clf.score(X_test, y_test), 2))
+            self.testresults.append(_round(100*clf.score(X_test, y_test), 2))
         self.clf = clf
-        devaccuracy = round(np.mean(self.devresults), 2)
-        testaccuracy = round(np.mean(self.testresults), 2)
+        devaccuracy = _round(np.mean(self.devresults), 2)
+        testaccuracy = _round(np.mean(self.testresults), 2)
         return devaccuracy, testaccuracy
 
 
@@ -159,7 +163,7 @@ class KFoldClassifier(object):
                 score = clf.score(X_test, y_test)
                 scanscores.append(score)
             # Append mean score
-            scores.append(round(100*np.mean(scanscores), 2))
+            scores.append(_round(100*np.mean(scanscores), 2))
 
         # evaluation
         logging.info([('reg:' + str(regs[idx]), scores[idx])
@@ -184,7 +188,7 @@ class KFoldClassifier(object):
             clf.fit(self.train['X'], self.train['y'])
         self.clf = clf
         testaccuracy = clf.score(self.test['X'], self.test['y'])
-        testaccuracy = round(100*testaccuracy, 2)
+        testaccuracy = _round(100*testaccuracy, 2)
         yhat = clf.predict(self.test['X'])
         return devaccuracy, testaccuracy, yhat
 
@@ -228,7 +232,7 @@ class SplitClassifier(object):
             else:
                 clf = LogisticRegression(C=reg, random_state=self.seed)
                 clf.fit(self.X['train'], self.y['train'])
-            scores.append(round(100*clf.score(self.X['valid'],
+            scores.append(_round(100*clf.score(self.X['valid'],
                                 self.y['valid']), 2))
         logging.info([('reg:'+str(regs[idx]), scores[idx])
                       for idx in range(len(scores))])
@@ -251,6 +255,6 @@ class SplitClassifier(object):
             clf.fit(self.X['train'], self.y['train'])
         self.clf = clf
         testaccuracy = clf.score(self.X['test'], self.y['test'])
-        testaccuracy = round(100*testaccuracy, 2)
+        testaccuracy = _round(100*testaccuracy, 2)
         test_preds = clf.predict(self.X['test'])
         return devaccuracy, testaccuracy, test_preds

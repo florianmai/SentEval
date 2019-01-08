@@ -17,7 +17,7 @@ import io
 import ipdb as pdb
 import numpy as np
 import logging
-import cPickle as pkl
+import _pickle as pkl
 
 from scipy.stats import spearmanr, pearsonr
 from sklearn.metrics import mean_squared_error

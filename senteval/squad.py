@@ -15,7 +15,7 @@ import pdb
 import json
 import copy
 import logging
-import cPickle as pkl
+import _pickle as pkl
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier

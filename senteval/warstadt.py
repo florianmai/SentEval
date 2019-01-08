@@ -13,7 +13,7 @@ import pdb
 import copy
 import codecs
 import logging
-import cPickle as pkl
+import _pickle as pkl
 import numpy as np
 from sklearn.metrics import matthews_corrcoef
 

@@ -15,7 +15,7 @@ import ipdb as pdb
 import copy
 import codecs
 import logging
-import cPickle as pkl
+import _pickle as pkl
 import numpy as np
 from sklearn.metrics import f1_score
 

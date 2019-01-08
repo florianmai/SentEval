@@ -15,7 +15,7 @@ import copy
 import codecs
 import logging
 import ipdb as pdb
-import cPickle as pkl
+import _pickle as pkl
 import numpy as np
 
 from senteval.tools.validation import SplitClassifier
