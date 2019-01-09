@@ -24,6 +24,7 @@ import torch.nn.functional as F
 
 
 class PyTorchClassifier(object):
+
     def __init__(self, inputdim, nclasses, l2reg=0., batch_size=64, seed=1111, cudaEfficient=True):
         # fix seed
         np.random.seed(seed)
@@ -44,8 +45,8 @@ class PyTorchClassifier(object):
             devX, devy = validation_data
         else:
             permutation = np.random.permutation(len(X))
-            trainidx = permutation[int(validation_split*len(X)):]
-            devidx = permutation[0:int(validation_split*len(X))]
+            trainidx = permutation[int(validation_split * len(X)):]
+            devidx = permutation[0:int(validation_split * len(X))]
             trainX, trainy = X[trainidx], y[trainidx]
             devX, devy = X[devidx], y[devidx]
 
@@ -105,7 +106,7 @@ class PyTorchClassifier(object):
                 output = self.model(Xbatch)
                 # loss
                 loss = self.loss_fn(output, ybatch)
-                all_costs.append(loss.data[0])
+                all_costs.append(loss.item())
                 # backward
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -131,7 +132,7 @@ class PyTorchClassifier(object):
             output = self.model(Xbatch)
             pred = output.data.max(1)[1]
             correct += pred.long().eq(ybatch.data.long()).sum()
-        accuracy = 1.0*correct.float() / len(devX)
+        accuracy = 1.0 * correct.float() / len(devX)
         return accuracy
 
     def predict(self, devX):
@@ -162,12 +163,13 @@ class PyTorchClassifier(object):
                 probas = np.concatenate(probas, vals, axis=0)
         return probas
 
-
 """
 MLP with Pytorch (nhid=0 --> Logistic Regression)
 """
 
+
 class MLP(PyTorchClassifier):
+
     def __init__(self, params, inputdim, nclasses, l2reg=0., batch_size=64,
                  seed=1111, cudaEfficient=False):
         super(self.__class__, self).__init__(inputdim, nclasses, l2reg,
