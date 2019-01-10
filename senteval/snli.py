@@ -22,7 +22,8 @@ from senteval.tools.utils import process_sentence
 
 
 class SNLIEval(object):
-    def __init__(self, taskpath, seed=1111):
+
+    def __init__(self, taskpath, seed=1111, use_adversarial_samples=False):
         logging.debug('***** Transfer task : SNLI Entailment*****\n\n')
         self.seed = seed
         train1 = self.loadFile(os.path.join(taskpath, 's1.train'))
@@ -42,8 +43,9 @@ class SNLIEval(object):
                              encoding='utf-8').read().splitlines()
 
         # also load adversarial examples
-        aux1, aux2, auxlabels = self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'))
-        test1, test2, testlabels = self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'))
+        if use_adversarial_samples:
+            aux1, aux2, auxlabels = self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'))
+            test1, test2, testlabels = self.loadAux(os.path.join(taskpath, 'adversarial_nli.tsv'))
 
         # sort data (by s2 first) to reduce padding
         sorted_train = sorted(zip(train2, train1, trainlabels),
@@ -58,16 +60,22 @@ class SNLIEval(object):
                              key=lambda z: (len(z[0]), len(z[1]), z[2]))
         test2, test1, testlabels = map(list, zip(*sorted_test))
 
-        sorted_aux = sorted(zip(aux2, aux1, auxlabels),
-                            key=lambda z: (len(z[0]), len(z[1]), z[2]))
-        aux2, aux1, auxlabels = map(list, zip(*sorted_aux))
+        if use_adversarial_samples:
+            sorted_aux = sorted(zip(aux2, aux1, auxlabels),
+                                key=lambda z: (len(z[0]), len(z[1]), z[2]))
+            aux2, aux1, auxlabels = map(list, zip(*sorted_aux))
 
-        self.samples = train1 + train2 + valid1 + valid2 + test1 + test2 + aux1 + aux2
+        self.samples = train1 + train2 + valid1 + valid2 + test1 + test2
+        if use_adversarial_samples:
+            self.samples += aux1 + aux2
+            
         self.data = {'train': (train1, train2, trainlabels),
                      'valid': (valid1, valid2, validlabels),
-                     'test': (test1, test2, testlabels),
-                     'aux': (aux1, aux2, auxlabels)
+                     'test': (test1, test2, testlabels)
+                     # 'aux': (aux1, aux2, auxlabels)
                      }
+        if use_adversarial_samples:
+            self.data.update({'aux': (aux1, aux2, auxlabels)})
 
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
@@ -91,10 +99,10 @@ class SNLIEval(object):
                 if targ in ['neutral', 'entailment', 'contradiction']:
                     targs.append(targ)
                 else:
-                    #print("Invalid label %s" % targ)
-                    #print("Row %d: %s" % (row_idx, ' '.join(raw_datum)))
+                    # print("Invalid label %s" % targ)
+                    # print("Row %d: %s" % (row_idx, ' '.join(raw_datum)))
                     continue
-                    #raise ValueError("Invalid label %s!" % targ)
+                    # raise ValueError("Invalid label %s!" % targ)
                 sents1.append(sent1)
                 sents2.append(sent2)
             assert len(sents1) == len(sents2) == len(targs)
@@ -102,7 +110,7 @@ class SNLIEval(object):
 
     def run(self, params, batcher):
         self.X, self.y = {}, {}
-        dico_label = {'entailment': 0,  'neutral': 1, 'contradiction': 2}
+        dico_label = {'entailment': 0, 'neutral': 1, 'contradiction': 2}
         for key in self.data:
             if key not in self.X:
                 self.X[key] = []
@@ -121,11 +129,11 @@ class SNLIEval(object):
                     enc2 = batcher(params, batch2)
                     enc_input.append(np.hstack((enc1, enc2, enc1 * enc2,
                                                 np.abs(enc1 - enc2))))
-                if (ii*params.batch_size) % (20000*params.batch_size) == 0:
-                    logging.info("PROGRESS (encoding): %.2f%%" %
+                if (ii * params.batch_size) % (20000 * params.batch_size) == 0:
+                    logging.info("PROGRESS (encoding): %.2f%%" % 
                                  (100 * ii / n_labels))
             self.X[key] = np.vstack(enc_input)
-            self.y[key] = [dico_label[y] for y in mylabels]
+            self.y[key] = np.array([dico_label[y] for y in mylabels])
 
         config = {'nclasses': 3, 'seed': self.seed,
                   'usepytorch': params.usepytorch,
@@ -138,11 +146,11 @@ class SNLIEval(object):
         config['classifier'] = config_classifier
 
         clf = SplitClassifier(self.X, self.y, config)
-        devacc, testacc = clf.run()
+        devacc, testacc, _ = clf.run()
         logging.debug('Dev acc : {0} Test acc : {1} for SNLI\n'
                       .format(devacc, testacc))
-        #auxacc = clf.score(self.X['aux'], self.y['aux'])
-        #logging.debug('Aux acc: {0}\n'.format(round(100*auxacc, 2)))
+        # auxacc = clf.score(self.X['aux'], self.y['aux'])
+        # logging.debug('Aux acc: {0}\n'.format(round(100*auxacc, 2)))
         return {'devacc': devacc, 'acc': testacc,
                 'ndev': len(self.data['valid'][0]),
                 'ntest': len(self.data['test'][0])}

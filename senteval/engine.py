@@ -23,6 +23,7 @@ from senteval.mrpc import MRPCEval
 from senteval.sts import STS12Eval, STS13Eval, STS14Eval, STS15Eval, STS16Eval, STSBenchmarkEval
 from senteval.sst import SSTEval
 from senteval.rank import ImageCaptionRetrievalEval
+from senteval.probing import *
 from senteval.quora import QuoraEval
 from senteval.rte import RTEEval
 from senteval.squad import SQuADEval
@@ -33,11 +34,15 @@ from senteval.anli import ANLIEval
 ALL_TASKS = ['CR', 'MR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
              'SICKRelatedness', 'SICKEntailment', 'STSBenchmark',
              'SNLI', 'ImageCaptionRetrieval', 'STS12', 'STS13',
-             'STS14', 'STS15', 'STS16',
-             'MNLI', 'Quora', 'RTE', 'SQuAD', 'Warstadt', 'WNLI', 'ANLI']
-BENCHMARK_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'MNLI', 'Quora', 'RTE', 'SQuAD', 'Warstadt', 'WNLI']
+             'STS14', 'STS15', 'STS16', 'Length', 'WordContent', 'Depth', 'TopConstituents',
+                           'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
+                           'OddManOut', 'CoordinationInversion',
+             'MNLI', 'QQP', 'RTE', 'QNLI', 'CoLA', 'WNLI', 'ANLI']
+BENCHMARK_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'MNLI', 'QQP', 'RTE', 'QNLI', 'CoLA', 'WNLI']
+
 
 class SE(object):
+
     def __init__(self, params, batcher, prepare=None):
         # parameters
         params = utils.dotdict(params)
@@ -74,50 +79,75 @@ class SE(object):
         max_seq_len = self.params.max_seq_len
         load_data = self.params.load_data
         seed = self.params.seed
+
+        # Original SentEval tasks
         if name == 'CR':
-            self.evaluation = CREval(tpath + '/CR', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = CREval(tpath + '/downstream/CR', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'MR':
-            self.evaluation = MREval(tpath + '/MR', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = MREval(tpath + '/downstream/MR', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'MPQA':
-            self.evaluation = MPQAEval(tpath + '/MPQA', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = MPQAEval(tpath + '/downstream/MPQA', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SUBJ':
-            self.evaluation = SUBJEval(tpath + '/SUBJ', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = SUBJEval(tpath + '/downstream/SUBJ', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SST2':
-            self.evaluation = SSTEval(tpath + '/SST/binary', nclasses=2, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = SSTEval(tpath + '/downstream/SST/binary', nclasses=2, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SST5':
-            self.evaluation = SSTEval(tpath + '/SST/fine', nclasses=5, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = SSTEval(tpath + '/downstream/SST/fine', nclasses=5, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'TREC':
-            self.evaluation = TRECEval(tpath + '/TREC', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = TRECEval(tpath + '/downstream/TREC', seed=seed)
         elif name == 'MRPC':
-            self.evaluation = MRPCEval(tpath + '/MRPC', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = MRPCEval(tpath + '/downstream/MRPC', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'SICKRelatedness':
-            self.evaluation = SICKRelatednessEval(tpath + '/SICK', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = SICKRelatednessEval(tpath + '/downstream/SICK', seed=seed)
         elif name == 'STSBenchmark':
-            self.evaluation = STSBenchmarkEval(tpath + '/STS/STSBenchmark', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = STSBenchmarkEval(tpath + '/downstream/STS/STSBenchmark', seed=seed)
         elif name == 'SICKEntailment':
-            self.evaluation = SICKEntailmentEval(tpath + '/SICK', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = SICKEntailmentEval(tpath + '/downstream/SICK', seed=seed)
         elif name == 'SNLI':
-            self.evaluation = SNLIEval(tpath + '/SNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = SNLIEval(tpath + '/downstream/SNLI', seed=seed)
         elif name in ['STS12', 'STS13', 'STS14', 'STS15', 'STS16']:
             fpath = name + '-en-test'
-            self.evaluation = eval(name + 'Eval')(tpath + '/STS/' + fpath, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = eval(name + 'Eval')(tpath + '/downstream/STS/' + fpath, max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'ImageCaptionRetrieval':
-            self.evaluation = ImageCaptionRetrievalEval(tpath + '/COCO', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = ImageCaptionRetrievalEval(tpath + '/downstream/COCO', seed=self.params.seed)
+
+        # Probing Tasks
+        elif name == 'Length':
+                self.evaluation = LengthEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'WordContent':
+                self.evaluation = WordContentEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'Depth':
+                self.evaluation = DepthEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'TopConstituents':
+                self.evaluation = TopConstituentsEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'BigramShift':
+                self.evaluation = BigramShiftEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'Tense':
+                self.evaluation = TenseEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'SubjNumber':
+                self.evaluation = SubjNumberEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'ObjNumber':
+                self.evaluation = ObjNumberEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'OddManOut':
+                self.evaluation = OddManOutEval(tpath + '/probing', seed=self.params.seed)
+        elif name == 'CoordinationInversion':
+                self.evaluation = CoordinationInversionEval(tpath + '/probing', seed=self.params.seed)
+
+        # GLUE tasks
         elif name == 'MNLI':
-            self.evaluation = MNLIEval(tpath + '/MNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
-        elif name == 'Quora':
-            self.evaluation = QuoraEval(tpath + '/Quora', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = MNLIEval(tpath + 'GLUE/MNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+        elif name == 'QQP':
+            self.evaluation = QuoraEval(tpath + 'GLUE/QQP', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'RTE':
-            self.evaluation = RTEEval(tpath + '/RTE', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
-        elif name == 'SQuAD':
-            self.evaluation = SQuADEval(tpath + '/SQuAD', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = RTEEval(tpath + 'GLUE/RTE', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+        elif name == 'QNLI':
+            self.evaluation = SQuADEval(tpath + 'GLUE/QNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'WNLI':
-            self.evaluation = WNLIEval(tpath + '/WNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
-        elif name == 'Warstadt':
-            #self.evaluation = WarstadtEval(tpath + '/Warstadt_old', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
-            self.evaluation = WarstadtEval(tpath + '/Warstadt', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = WNLIEval(tpath + 'GLUE/WNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+        elif name == 'CoLA':
+            self.evaluation = WarstadtEval(tpath + 'GLUE/CoLA', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'ANLI':
-            self.evaluation = ANLIEval(tpath + '/ANLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = ANLIEval(tpath + 'GLUE/ANLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
 
         self.params.current_task = name
         self.evaluation.do_prepare(self.params, self.prepare)

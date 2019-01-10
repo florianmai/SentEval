@@ -23,6 +23,7 @@ from senteval.tools.utils import process_sentence, load_tsv, sort_split, load_te
 
 
 class SQuADEval(object):
+
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : SQuAD Classification *****\n\n')
         self.seed = seed
@@ -82,7 +83,7 @@ class SQuADEval(object):
                     mylabels = [0] * len(idxs)
                 elif len(self.data[key]) == 4:
                     input1, input2, mylabels, idxs = self.data[key]
-                self.idxs[key]= idxs
+                self.idxs[key] = idxs
             else:
                 input1, input2, mylabels = self.data[key]
             enc_input = []
@@ -96,10 +97,11 @@ class SQuADEval(object):
                     enc2 = batcher(params, batch2)
                     enc_input.append(np.hstack((enc1, enc2, enc1 * enc2,
                                                 np.abs(enc1 - enc2))))
-                if (ii*params.batch_size) % (20000*params.batch_size) == 0:
+                if (ii * params.batch_size) % (20000 * params.batch_size) == 0:
                     logging.info("PROGRESS (encoding): %.2f%%" % (100 * ii / n_labels))
             self.X[key] = np.vstack(enc_input)
-            self.y[key] = mylabels #[dico_label[y] for y in mylabels]
+            # self.y[key] = mylabels #[dico_label[y] for y in mylabels]
+            self.y[key] = np.array(mylabels)
 
         config = {'nclasses': 2, 'seed': self.seed, 'usepytorch': params.usepytorch,
                   'cudaEfficient': True, 'nhid': params.nhid, 'noreg': False}

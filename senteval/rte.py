@@ -21,7 +21,9 @@ import numpy as np
 from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, load_test, sort_split, sort_preds
 
+
 class RTEEval(object):
+
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : Recognizing Textual Entailment*****\n\n')
         self.seed = seed
@@ -88,10 +90,10 @@ class RTEEval(object):
                     enc1 = batcher(params, batch1)
                     enc2 = batcher(params, batch2)
                     enc_input.append(np.hstack((enc1, enc2, enc1 * enc2, np.abs(enc1 - enc2))))
-                if (ii*params.batch_size) % (20000*params.batch_size) == 0:
+                if (ii * params.batch_size) % (20000 * params.batch_size) == 0:
                     logging.info("PROGRESS (encoding): %.2f%%" % (100 * ii / n_labels))
             self.X[key] = np.vstack(enc_input)
-            self.y[key] = mylabels
+            self.y[key] = np.array(mylabels)
 
         config = {'nclasses': 2, 'seed': self.seed, 'usepytorch': params.usepytorch,
                   'cudaEfficient': True, 'nhid': params.nhid, 'noreg': False}

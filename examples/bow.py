@@ -7,33 +7,69 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import os
 import sys
-import logging
-import argparse
-import ipdb as pdb
-
+import io
 import numpy as np
+import logging
 
-import data
-from utils import get_tasks, write_results
 
 # Set PATHs
-if "cs.nyu.edu" in os.uname()[1]:
-    PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
-else:
-    PATH_PREFIX = '/beegfs/aw3272/'
 PATH_TO_SENTEVAL = '../'
-PATH_TO_DATA = '../data/senteval_data'
-PATH_TO_GLOVE = 'glove/glove.840B.300d.txt'
+PATH_TO_DATA = '../data'
+# PATH_TO_VEC = 'glove/glove.840B.300d.txt'
+PATH_TO_VEC = 'fasttext/crawl-300d-2M.vec'
 
 # import SentEval
 sys.path.insert(0, PATH_TO_SENTEVAL)
 import senteval
 
+
+# Create dictionary
+def create_dictionary(sentences, threshold=0):
+    words = {}
+    for s in sentences:
+        for word in s:
+            words[word] = words.get(word, 0) + 1
+
+    if threshold > 0:
+        newwords = {}
+        for word in words:
+            if words[word] >= threshold:
+                newwords[word] = words[word]
+        words = newwords
+    words['<s>'] = 1e9 + 4
+    words['</s>'] = 1e9 + 3
+    words['<p>'] = 1e9 + 2
+
+    sorted_words = sorted(words.items(), key=lambda x: -x[1])  # inverse sort
+    id2word = []
+    word2id = {}
+    for i, (w, _) in enumerate(sorted_words):
+        id2word.append(w)
+        word2id[w] = i
+
+    return id2word, word2id
+
+# Get word vectors from vocabulary (glove, word2vec, fasttext ..)
+def get_wordvec(path_to_vec, word2id):
+    word_vec = {}
+
+    with io.open(path_to_vec, 'r', encoding='utf-8') as f:
+        # if word2vec or fasttext file : skip first line "next(f)"
+        for line in f:
+            word, vec = line.split(' ', 1)
+            if word in word2id:
+                word_vec[word] = np.fromstring(vec, sep=' ')
+
+    logging.info('Found {0} words with word vectors, out of \
+        {1} words'.format(len(word_vec), len(word2id)))
+    return word_vec
+
+
+# SentEval prepare and batcher
 def prepare(params, samples):
-    _, params.word2id = data.create_dictionary(samples)
-    params.word_vec = data.get_wordvec(PATH_TO_GLOVE, params.word2id)
+    _, params.word2id = create_dictionary(samples)
+    params.word_vec = get_wordvec(PATH_TO_VEC, params.word2id)
     params.wvec_dim = 300
     return
 
@@ -55,51 +91,22 @@ def batcher(params, batch):
     embeddings = np.vstack(embeddings)
     return embeddings
 
-def main(arguments):
-    parser = argparse.ArgumentParser(description=__doc__,
-                    formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    # Logistics
-    parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
-    parser.add_argument("--seed", help="Random seed", type=int, default=19)
-    parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
-    parser.add_argument("--out_dir", help="Dir to write preds to", type=str, default='')
-    parser.add_argument("--log_file", help="File to log to", type=str)
+# Set params for SentEval
+params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 5}
+params_senteval['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
+                                 'tenacity': 3, 'epoch_size': 2}
 
-    # Task options
-    parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
-    parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
-    parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
-
-    # Model options
-    parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
-
-    # Classifier options
-    parser.add_argument("--cls_batch_size", help="Batch size to use for classifier", type=int, default=16)
-
-    args = parser.parse_args(arguments)
-    logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
-    if args.log_file:
-        fileHandler = logging.FileHandler(args.log_file)
-        logging.getLogger().addHandler(fileHandler)
-    logging.info(args)
-
-    # SentEval params
-    params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
-            'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data,
-            'seed': args.seed}
-    params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
-            'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
-
-    se = senteval.engine.SE(params_senteval, batcher, prepare)
-    tasks = get_tasks(args.tasks)
-    results = se.eval(tasks)
-    if args.out_dir:
-        write_results(results, args.out_dir)
-    if not args.log_file:
-        print(results)
-    else:
-        logging.info(results)
+# Set up logger
+logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    se = senteval.engine.SE(params_senteval, batcher, prepare)
+    transfer_tasks = ['STS12', 'STS13', 'STS14', 'STS15', 'STS16',
+                      'MR', 'CR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
+                      'SICKEntailment', 'SICKRelatedness', 'STSBenchmark',
+                      'Length', 'WordContent', 'Depth', 'TopConstituents',
+                      'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
+                      'OddManOut', 'CoordinationInversion']
+    results = se.eval(transfer_tasks)
+    print(results)

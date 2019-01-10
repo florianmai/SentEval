@@ -27,7 +27,9 @@ from senteval.sick import SICKRelatednessEval
 from senteval.tools.relatedness import RelatednessPytorch
 from senteval.tools.utils import process_sentence, load_test, sort_preds
 
+
 class STSEval(object):
+
     def loadFile(self, fpath, max_seq_len, load_data):
         self.data = {}
         self.samples = []
@@ -83,7 +85,7 @@ class STSEval(object):
                                 'spearman': spearmanr(sys_scores, gs_scores),
                                 'nsamples': len(sys_scores)}
             all_sys_scores += sys_scores
-            logging.debug('%s : pearson = %.4f, spearman = %.4f' %
+            logging.debug('%s : pearson = %.4f, spearman = %.4f' % 
                           (dataset, results[dataset]['pearson'][0],
                            results[dataset]['spearman'][0]))
 
@@ -108,6 +110,7 @@ class STSEval(object):
 
 
 class STS12Eval(STSEval):
+
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS12 *****\n\n')
         self.seed = seed
@@ -117,6 +120,7 @@ class STS12Eval(STSEval):
 
 
 class STS13Eval(STSEval):
+
     # STS13 here does not contain the "SMT" subtask due to LICENSE issue
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS13 (-SMT) *****\n\n')
@@ -126,6 +130,7 @@ class STS13Eval(STSEval):
 
 
 class STS14Eval(STSEval):
+
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS14 *****\n\n')
         self.seed = seed
@@ -135,6 +140,7 @@ class STS14Eval(STSEval):
 
 
 class STS15Eval(STSEval):
+
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS15 *****\n\n')
         self.seed = seed
@@ -144,6 +150,7 @@ class STS15Eval(STSEval):
 
 
 class STS16Eval(STSEval):
+
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : STS16 *****\n\n')
         self.seed = seed
@@ -153,122 +160,23 @@ class STS16Eval(STSEval):
 
 
 class STSBenchmarkEval(SICKRelatednessEval):
-    def __init__(self, task_path, max_seq_len, load_data, seed=1111):
+
+    def __init__(self, task_path, seed=1111):
         logging.debug('\n\n***** Transfer task : STSBenchmark*****\n\n')
         self.seed = seed
-        train = self.loadFile(os.path.join(task_path, 'sts-train.csv'), max_seq_len, load_data)
-        dev = self.loadFile(os.path.join(task_path, 'sts-dev.csv'), max_seq_len, load_data)
-        #test = self.loadFile(os.path.join(task_path, 'sts-test.csv'), max_seq_len, load_data)
-        test = self.loadTest(os.path.join(task_path, 'sts_benchmark_test_ans.tsv'), max_seq_len, load_data)
+        train = self.loadFile(os.path.join(task_path, 'sts-train.csv'))
+        dev = self.loadFile(os.path.join(task_path, 'sts-dev.csv'))
+        test = self.loadFile(os.path.join(task_path, 'sts-test.csv'))
         self.sick_data = {'train': train, 'dev': dev, 'test': test}
 
-    def loadFile(self, fpath, max_seq_len, load_data):
-        if os.path.exists(fpath + '.pkl') and load_data:
-            sick_data = pkl.load(open(fpath + '.pkl', 'rb'))
-        else:
-            sick_data = {'X_A': [], 'X_B': [], 'y': []}
-            with io.open(fpath, 'r', encoding='utf-8') as f:
-                for line in f:
-                    text = line.strip().split('\t')
-                    sick_data['X_A'].append(process_sentence(text[5], max_seq_len))
-                    sick_data['X_B'].append(process_sentence(text[6], max_seq_len))
-                    sick_data['y'].append(text[4])
+    def loadFile(self, fpath):
+        sick_data = {'X_A': [], 'X_B': [], 'y': []}
+        with io.open(fpath, 'r', encoding='utf-8') as f:
+            for line in f:
+                text = line.strip().split('\t')
+                sick_data['X_A'].append(text[5].split())
+                sick_data['X_B'].append(text[6].split())
+                sick_data['y'].append(text[4])
 
-            sick_data['y'] = [float(s) for s in sick_data['y']]
-            pkl.dump(sick_data, open(fpath + '.pkl', 'wb'))
+        sick_data['y'] = [float(s) for s in sick_data['y']]
         return sick_data
-
-    def loadTest(self, data_file, max_seq_len, load_data):
-        '''Load indexed data'''
-        if os.path.exists(data_file + '.pkl') and load_data:
-            data = pkl.load(open(data_file + '.pkl', 'rb'))
-            logging.info("Loaded data from %s", data_file + '.pkl')
-        else:
-            data = load_test(data_file, max_seq_len, s1_idx=1, s2_idx=2, targ_idx=3,
-                             idx_idx=0, skip_rows=1, targ_fn=float)
-            pkl.dump(data, open(data_file + '.pkl', 'wb'))
-            logging.info("Saved data to %s", data_file + '.pkl')
-        return {'X_A': data[0], 'X_B': data[1], 'y': data[2], 'idx': data[3]}
-
-    def run(self, params, batcher):
-        sick_embed = {'train': {}, 'dev': {}, 'test': {}}
-        bsize = params.batch_size
-
-        for key in self.sick_data:
-            logging.info('Computing embedding for {0}'.format(key))
-            # Sort to reduce padding
-            sorted_corpus = sorted(zip(self.sick_data[key]['X_A'],
-                                       self.sick_data[key]['X_B'],
-                                       self.sick_data[key]['y']),
-                                   key=lambda z: (len(z[0]), len(z[1]), z[2]))
-
-            if key == 'test':
-                sorted_corpus = sorted(zip(self.sick_data[key]['X_A'],
-                                           self.sick_data[key]['X_B'],
-                                           self.sick_data[key]['y'],
-                                           self.sick_data[key]['idx']),
-                                       key=lambda z: (len(z[0]), len(z[1]), z[2], z[3]))
-                self.sick_data[key]['X_A'] = [x for (x, y, z, w) in sorted_corpus]
-                self.sick_data[key]['X_B'] = [y for (x, y, z, w) in sorted_corpus]
-                self.sick_data[key]['y'] = [z for (x, y, z, w) in sorted_corpus]
-                self.sick_data[key]['idx'] = [w for (x, y, z, w) in sorted_corpus]
-                sick_embed[key]['idx'] = self.sick_data[key]['idx']
-            else:
-                sorted_corpus = sorted(zip(self.sick_data[key]['X_A'],
-                                           self.sick_data[key]['X_B'],
-                                           self.sick_data[key]['y']),
-                                       key=lambda z: (len(z[0]), len(z[1]), z[2]))
-                self.sick_data[key]['X_A'] = [x for (x, y, z) in sorted_corpus]
-                self.sick_data[key]['X_B'] = [y for (x, y, z) in sorted_corpus]
-                self.sick_data[key]['y'] = [z for (x, y, z) in sorted_corpus]
-
-            for txt_type in ['X_A', 'X_B']:
-                sick_embed[key][txt_type] = []
-                for ii in range(0, len(self.sick_data[key]['y']), bsize):
-                    batch = self.sick_data[key][txt_type][ii:ii + bsize]
-                    embeddings = batcher(params, batch)
-                    sick_embed[key][txt_type].append(embeddings)
-                sick_embed[key][txt_type] = np.vstack(sick_embed[key][txt_type])
-            sick_embed[key]['y'] = np.array(self.sick_data[key]['y'])
-            logging.info('Computed {0} embeddings'.format(key))
-
-        # Train
-        trainA = sick_embed['train']['X_A']
-        trainB = sick_embed['train']['X_B']
-        trainF = np.c_[np.abs(trainA - trainB), trainA * trainB]
-        trainY = self.encode_labels(self.sick_data['train']['y'])
-
-        # Dev
-        devA = sick_embed['dev']['X_A']
-        devB = sick_embed['dev']['X_B']
-        devF = np.c_[np.abs(devA - devB), devA * devB]
-        devY = self.encode_labels(self.sick_data['dev']['y'])
-
-        # Test
-        testA = sick_embed['test']['X_A']
-        testB = sick_embed['test']['X_B']
-        testF = np.c_[np.abs(testA - testB), testA * testB]
-        testY = self.encode_labels(self.sick_data['test']['y'])
-
-        config = {'seed': self.seed, 'nclasses': 5}
-        clf = RelatednessPytorch(train={'X': trainF, 'y': trainY},
-                                 valid={'X': devF, 'y': devY},
-                                 test={'X': testF, 'y': testY},
-                                 devscores=self.sick_data['dev']['y'],
-                                 config=config)
-
-        devpr, yhat, dev_preds = clf.run()
-
-        dev_sr = spearmanr(dev_preds, self.sick_data['dev']['y'])[0]
-        pr = pearsonr(yhat, self.sick_data['test']['y'])[0]
-        sr = spearmanr(yhat, self.sick_data['test']['y'])[0]
-        se = mean_squared_error(yhat, self.sick_data['test']['y'])
-        test_preds = sort_preds(yhat.squeeze().tolist(), sick_embed['test']['idx'])
-        logging.debug('Dev : Pearson {0} Spearman {1}'.format(devpr, dev_sr))
-        logging.debug('Test : Pearson {0} Spearman {1} MSE {2} \
-                       for SICK Relatedness\n'.format(pr, sr, se))
-
-        return {'devpearson': devpr, 'devspearman': dev_sr,
-                'pearson': pr, 'spearman': sr, 'mse': se,
-                'preds': test_preds, 'ndev': len(devA), 'ntest': len(testA)}
-

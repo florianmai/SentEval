@@ -40,6 +40,7 @@ def prepare(params, samples):
     return
 
 def batcher(params, batch):
+<<<<<<< HEAD
     #batch = [str(' '.join(sent), errors="ignore") if sent != [] else '.' for sent in batch]
     try:
         #encoded_batch = [' '.join(sent).encode('utf-8') if sent != [] else '.' for sent in batch]
@@ -47,6 +48,11 @@ def batcher(params, batch):
         embeddings = skipthoughts.encode(params['encoder'], encoded_batch, verbose=False, use_eos=True)
     except:
         pdb.set_trace()
+=======
+    batch = [str(' '.join(sent), errors="ignore") if sent != [] else '.' for sent in batch]
+    embeddings = skipthoughts.encode(params['encoder'], batch,
+                                     verbose=False, use_eos=True)
+>>>>>>> 8a486fdfa2a2364641b290ced4d81c51f64cf175
     return embeddings
 
 
@@ -66,6 +72,7 @@ def main(arguments):
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
 
+<<<<<<< HEAD
     # Model options
     parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
     parser.add_argument("--dict_file", help="File to load dict from", type=str)
@@ -102,3 +109,18 @@ def main(arguments):
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
+=======
+if __name__ == "__main__":
+    # Load SkipThought model
+    params_senteval['encoder'] = skipthoughts.load_model()
+
+    se = senteval.engine.SE(params_senteval, batcher, prepare)
+    transfer_tasks = ['STS12', 'STS13', 'STS14', 'STS15', 'STS16',
+                      'MR', 'CR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
+                      'SICKEntailment', 'SICKRelatedness', 'STSBenchmark',
+                      'Length', 'WordContent', 'Depth', 'TopConstituents',
+                      'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
+                      'OddManOut', 'CoordinationInversion']
+    results = se.eval(transfer_tasks)
+    print(results)
+>>>>>>> 8a486fdfa2a2364641b290ced4d81c51f64cf175

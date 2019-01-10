@@ -5,13 +5,23 @@
 # LICENSE file in the root directory of this source tree.
 #
 
+"""
+InferSent models. See https://github.com/facebookresearch/InferSent.
+"""
+
 from __future__ import absolute_import, division, unicode_literals
 import os
 import sys
 import logging
+<<<<<<< HEAD
 import argparse
 import torch
 from utils import get_tasks, write_results
+=======
+
+# get models.py from InferSent repo
+from models import InferSent
+>>>>>>> 8a486fdfa2a2364641b290ced4d81c51f64cf175
 
 # Set PATHs
 if "cs.nyu.edu" in os.uname()[1] or 'dgx' in os.uname()[1]:
@@ -20,11 +30,21 @@ else:
     PATH_PREFIX = '/beegfs/aw3272/'
 
 PATH_SENTEVAL = '../'
+<<<<<<< HEAD
 PATH_TO_DATA = '../data/senteval_data/'
 PATH_TO_GLOVE = PATH_PREFIX + 'raw_data/GloVe/glove.840B.300d.txt'
 INFERSENT_PATH = 'infersent.allnli.pickle'
 
 assert os.path.isfile(INFERSENT_PATH) and os.path.isfile(PATH_TO_GLOVE), 'Set MODEL and GloVe PATHs'
+=======
+PATH_TO_DATA = '../data'
+PATH_TO_W2V = 'PATH/TO/glove.840B.300d.txt'  # or crawl-300d-2M.vec for V2
+MODEL_PATH = 'infersent1.pkl'
+V = 1 # version of InferSent
+
+assert os.path.isfile(MODEL_PATH) and os.path.isfile(PATH_TO_W2V), \
+    'Set MODEL and GloVe PATHs'
+>>>>>>> 8a486fdfa2a2364641b290ced4d81c51f64cf175
 
 # import senteval
 sys.path.insert(0, PATH_SENTEVAL)
@@ -32,6 +52,10 @@ import senteval
 
 def prepare(params, samples):
     params.infersent.build_vocab([' '.join(s) for s in samples], tokenize=False)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8a486fdfa2a2364641b290ced4d81c51f64cf175
 
 def batcher(params, batch):
     sentences = [' '.join(s) for s in batch]
@@ -50,6 +74,7 @@ def main(arguments):
     parser.add_argument("--log_file", help="File to log to", type=str)
     parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
 
+<<<<<<< HEAD
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
@@ -73,13 +98,27 @@ def main(arguments):
             'seed': args.seed}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
             'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
+=======
+# define senteval params
+params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 5}
+params_senteval['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
+                                 'tenacity': 3, 'epoch_size': 2}
+# Set up logger
+logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
+>>>>>>> 8a486fdfa2a2364641b290ced4d81c51f64cf175
 
     # Load InferSent model
-    params_senteval['infersent'] = torch.load(INFERSENT_PATH)
-    params_senteval['infersent'].set_glove_path(PATH_TO_GLOVE)
+    params_model = {'bsize': 64, 'word_emb_dim': 300, 'enc_lstm_dim': 2048,
+                    'pool_type': 'max', 'dpout_model': 0.0, 'version': V}
+    model = InferSent(params_model)
+    model.load_state_dict(torch.load(MODEL_PATH))
+    model.set_w2v_path(PATH_TO_W2V)
+
+    params_senteval['infersent'] = model.cuda()
 
     # Do SentEval stuff
     se = senteval.engine.SE(params_senteval, batcher, prepare)
+<<<<<<< HEAD
     tasks = get_tasks(args.tasks)
     results = se.eval(tasks)
     if args.out_dir:
@@ -91,3 +130,13 @@ def main(arguments):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
+=======
+    transfer_tasks = ['STS12', 'STS13', 'STS14', 'STS15', 'STS16',
+                      'MR', 'CR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
+                      'SICKEntailment', 'SICKRelatedness', 'STSBenchmark',
+                      'Length', 'WordContent', 'Depth', 'TopConstituents',
+                      'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
+                      'OddManOut', 'CoordinationInversion']
+    results = se.eval(transfer_tasks)
+    print(results)
+>>>>>>> 8a486fdfa2a2364641b290ced4d81c51f64cf175

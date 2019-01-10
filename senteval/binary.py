@@ -19,6 +19,7 @@ from senteval.tools.validation import InnerKFoldClassifier
 
 
 class BinaryClassifierEval(object):
+
     def __init__(self, pos, neg, max_seq_len, load_data, seed=1111):
         self.seed = seed
         self.samples, self.labels = pos + neg, [1] * len(pos) + [0] * len(neg)
@@ -56,11 +57,12 @@ class BinaryClassifierEval(object):
         clf = InnerKFoldClassifier(enc_input, np.array(sorted_labels), config)
         devacc, testacc = clf.run()
         logging.debug('Dev acc : {0} Test acc : {1}\n'.format(devacc, testacc))
-        return {'devacc': devacc, 'acc': testacc, 'preds': test_preds,
+        return {'devacc': devacc, 'acc': testacc,
                 'ndev': self.n_samples, 'ntest': self.n_samples}
 
 
 class CREval(BinaryClassifierEval):
+
     def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : CR *****\n\n')
         pos = self.loadFile(os.path.join(task_path, 'custrev.pos'))
@@ -69,6 +71,7 @@ class CREval(BinaryClassifierEval):
 
 
 class MREval(BinaryClassifierEval):
+
     def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : MR *****\n\n')
         pos = self.loadFile(os.path.join(task_path, 'rt-polarity.pos'))
@@ -77,6 +80,7 @@ class MREval(BinaryClassifierEval):
 
 
 class SUBJEval(BinaryClassifierEval):
+
     def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : SUBJ *****\n\n')
         obj = self.loadFile(os.path.join(task_path, 'subj.objective'))
@@ -85,6 +89,7 @@ class SUBJEval(BinaryClassifierEval):
 
 
 class MPQAEval(BinaryClassifierEval):
+
     def __init__(self, task_path, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : MPQA *****\n\n')
         pos = self.loadFile(os.path.join(task_path, 'mpqa.pos'))

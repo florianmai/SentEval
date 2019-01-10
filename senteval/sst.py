@@ -22,6 +22,7 @@ from senteval.tools.utils import process_sentence, load_test, sort_preds
 
 
 class SSTEval(object):
+
     def __init__(self, task_path, max_seq_len, load_data, nclasses=2, seed=1111):
         self.seed = seed
 
@@ -33,9 +34,9 @@ class SSTEval(object):
 
         train = self.loadFile(os.path.join(task_path, 'sentiment-train'), max_seq_len, load_data)
         dev = self.loadFile(os.path.join(task_path, 'sentiment-dev'), max_seq_len, load_data)
-        #test = self.loadFile(os.path.join(task_path, 'sentiment-test'), max_seq_len, load_data)
-        test = self.loadTest(os.path.join(task_path, 'sst_binary_test_ans.tsv'), max_seq_len,
-                             load_data)
+        test = self.loadFile(os.path.join(task_path, 'sentiment-test'), max_seq_len, load_data)
+        # test = self.loadTest(os.path.join(task_path, 'sst_binary_test_ans.tsv'), max_seq_len,
+         #                    load_data)
         self.samples = train['X'] + dev['X'] + test['X']
         self.sst_data = {'train': train, 'dev': dev, 'test': test}
 
@@ -81,17 +82,19 @@ class SSTEval(object):
 
         for key in self.sst_data:
             logging.info('Computing embedding for {0}'.format(key))
-            # Sort to reduce padding
-            if key == 'test':
-                sorted_data = sorted(zip(self.sst_data[key]['X'], self.sst_data[key]['y'], self.sst_data[key]['idx']),
-                                     key=lambda z: (len(z[0]), z[1], z[2]))
-                self.sst_data[key]['X'], self.sst_data[key]['y'], self.sst_data[key]['idx'] = \
-                        map(list, zip(*sorted_data))
-                sst_embed[key]['idx'] = self.sst_data[key]['idx']
-            else:
-                sorted_data = sorted(zip(self.sst_data[key]['X'], self.sst_data[key]['y']),
-                                     key=lambda z: (len(z[0]), z[1]))
-                self.sst_data[key]['X'], self.sst_data[key]['y'] = map(list, zip(*sorted_data))
+            #===================================================================
+            # # Sort to reduce padding
+            # if key == 'test':
+            #     sorted_data = sorted(zip(self.sst_data[key]['X'], self.sst_data[key]['y'], self.sst_data[key]['idx']),
+            #                          key=lambda z: (len(z[0]), z[1], z[2]))
+            #     self.sst_data[key]['X'], self.sst_data[key]['y'], self.sst_data[key]['idx'] = \
+            #             map(list, zip(*sorted_data))
+            #     sst_embed[key]['idx'] = self.sst_data[key]['idx']
+            # else:
+            #     sorted_data = sorted(zip(self.sst_data[key]['X'], self.sst_data[key]['y']),
+            #                          key=lambda z: (len(z[0]), z[1]))
+            #     self.sst_data[key]['X'], self.sst_data[key]['y'] = map(list, zip(*sorted_data))
+            #===================================================================
 
             sst_embed[key]['X'] = []
             for ii in range(0, len(self.sst_data[key]['y']), bsize):
@@ -115,7 +118,7 @@ class SSTEval(object):
                               config=config_classifier)
 
         devacc, testacc, test_preds = clf.run()
-        test_preds = sort_preds(test_preds.squeeze().tolist(), sst_embed['test']['idx'])
+        # test_preds = sort_preds(test_preds.squeeze().tolist(), sst_embed['test']['idx'])
         logging.debug('\nDev acc : {0} Test acc : {1} for \
             SST {2} classification\n'.format(devacc, testacc, self.task_name))
         return {'devacc': devacc, 'acc': testacc, 'preds': test_preds,

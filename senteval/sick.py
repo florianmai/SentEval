@@ -23,6 +23,7 @@ from senteval.tools.validation import SplitClassifier
 
 
 class SICKRelatednessEval(object):
+
     def __init__(self, task_path, seed=1111):
         logging.debug('***** Transfer task : SICK-Relatedness*****\n\n')
         self.seed = seed
@@ -106,10 +107,12 @@ class SICKRelatednessEval(object):
                                  devscores=self.sick_data['dev']['y'],
                                  config=config)
 
-        devpr, yhat = clf.run()
+        devpr, yhat, _ = clf.run()
 
         pr = pearsonr(yhat, self.sick_data['test']['y'])[0]
         sr = spearmanr(yhat, self.sick_data['test']['y'])[0]
+        pr = 0 if pr != pr else pr
+        sr = 0 if sr != sr else sr
         se = mean_squared_error(yhat, self.sick_data['test']['y'])
         logging.debug('Dev : Pearson {0}'.format(devpr))
         logging.debug('Test : Pearson {0} Spearman {1} MSE {2} \
@@ -125,14 +128,15 @@ class SICKRelatednessEval(object):
         Y = np.zeros((len(labels), nclass)).astype('float32')
         for j, y in enumerate(labels):
             for i in range(nclass):
-                if i+1 == np.floor(y) + 1:
+                if i + 1 == np.floor(y) + 1:
                     Y[j, i] = y - np.floor(y)
-                if i+1 == np.floor(y):
+                if i + 1 == np.floor(y):
                     Y[j, i] = np.floor(y) - y + 1
         return Y
 
 
 class SICKEntailmentEval(SICKRelatednessEval):
+
     def __init__(self, task_path, seed=1111):
         logging.debug('***** Transfer task : SICK-Entailment*****\n\n')
         self.seed = seed

@@ -20,7 +20,9 @@ from sklearn.metrics import matthews_corrcoef
 from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, load_test, sort_split, sort_preds
 
+
 class WarstadtEval(object):
+
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
         logging.debug('***** Transfer task : Warstadt Acceptability*****\n\n')
         self.seed = seed
@@ -70,7 +72,7 @@ class WarstadtEval(object):
             if key not in self.idxs:
                 self.idxs[key] = []
 
-            #if len(self.data[key]) == 2:
+            # if len(self.data[key]) == 2:
             if key == 'test':
                 if len(self.data[key]) == 2:
                     input1, idxs = self.data[key]
@@ -88,10 +90,10 @@ class WarstadtEval(object):
                 if len(batch1) > 0:
                     enc1 = batcher(params, batch1)
                     enc_input.append(enc1)
-                if (ii*params.batch_size) % (20000*params.batch_size) == 0:
+                if (ii * params.batch_size) % (20000 * params.batch_size) == 0:
                     logging.info("PROGRESS (encoding): %.2f%%" % (100 * ii / n_labels))
             self.X[key] = np.vstack(enc_input)
-            self.y[key] = mylabels
+            self.y[key] = np.array(mylabels)
 
         config = {'nclasses': 2, 'seed': self.seed, 'usepytorch': params.usepytorch,
                   'cudaEfficient': True, 'nhid': params.nhid, 'noreg': False}
