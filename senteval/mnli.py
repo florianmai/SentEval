@@ -30,17 +30,8 @@ class MNLIEval(object):
                                          max_seq_len, targ_map, load_data))
         valid = sort_split(self.loadFile(os.path.join(taskpath, 'multinli_1.0_dev_both.txt'),
                                          max_seq_len, targ_map, load_data))
-        test_m = self.loadTest(os.path.join(taskpath, 'mnli_matched_test_ans.tsv'),
-                                          max_seq_len, targ_map, load_data)
-        test_m = sort_split(test_m)
-        test_mm = sort_split(self.loadTest(os.path.join(taskpath, 'mnli_mismatched_test_ans.tsv'),
-                                        max_seq_len, targ_map, load_data))
-        test_d = sort_split(self.loadTest(os.path.join(taskpath, 'diagnostic_test_ans.tsv'),
-                            max_seq_len, targ_map, load_data))
-        self.samples = train[0] + train[1] + valid[0] + valid[1] + test_m[0] + test_m[1] + \
-                        test_mm[0] + test_mm[1] + test_d[0] + test_d[1]
-        self.data = {'train': train, 'valid': valid, 'test': test_m,
-                     'test_mismatched': test_mm, 'diagnostic': test_d}
+        self.samples = train[0] + train[1] + valid[0] + valid[1]
+        self.data = {'train': train, 'valid': valid}
 
     def do_prepare(self, params, prepare):
         return prepare(params, self.samples)
@@ -110,7 +101,7 @@ class MNLIEval(object):
                     logging.info("PROGRESS (encoding): %.2f%%" % (100 * ii / n_labels))
             logging.debug("Finished encoding MNLI")
             self.X[key] = np.vstack(enc_input)
-            self.y[key] = mylabels
+            self.y[key] = np.array(mylabels)
             del enc_input
 
         config = {'nclasses': 3, 'seed': self.seed, 'usepytorch': params.usepytorch,
@@ -123,19 +114,23 @@ class MNLIEval(object):
 
         clf = SplitClassifier(self.X, self.y, config) # maybe assert that the order isn't changed
         logging.debug("Built classifier, starting training")
-        devacc, testacc, test_preds = clf.run()
-        test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
+        devacc, testacc, _ = clf.run()
+        
+        #test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
+        #mm_acc = round(100*clf.clf.score(self.X['test_mismatched'], self.y['test_mismatched']), 2)
+        #mm_preds = clf.clf.predict(self.X['test_mismatched'])
+        #mm_preds = sort_preds(mm_preds.squeeze().tolist(), self.idxs['test_mismatched'])
+        #d_acc = round(100*clf.clf.score(self.X['diagnostic'], self.y['diagnostic']), 2)
+        #d_preds = clf.clf.predict(self.X['diagnostic'])
+        #d_preds = sort_preds(d_preds.squeeze().tolist(), self.idxs['diagnostic'])
 
-        mm_acc = round(100*clf.clf.score(self.X['test_mismatched'], self.y['test_mismatched']), 2)
-        mm_preds = clf.clf.predict(self.X['test_mismatched'])
-        mm_preds = sort_preds(mm_preds.squeeze().tolist(), self.idxs['test_mismatched'])
-        d_acc = round(100*clf.clf.score(self.X['diagnostic'], self.y['diagnostic']), 2)
-        d_preds = clf.clf.predict(self.X['diagnostic'])
-        d_preds = sort_preds(d_preds.squeeze().tolist(), self.idxs['diagnostic'])
-
-        logging.debug('Dev acc : {0} Matched test acc : {1} Mismatched test acc: {2} for MNLI\n'.format(devacc, testacc, mm_acc))
+        #logging.debug('Dev acc : {0} Matched test acc : {1} Mismatched test acc: {2} for MNLI\n'.format(devacc, testacc, mm_acc))
+        logging.debug('Dev acc : {0}'.format(devacc))
         return {'devacc': devacc,
-                'matched_acc': testacc, 'preds': test_preds,
-                'mismatched_acc': mm_acc, 'mismatched_preds': mm_preds,
-                'diagnostic_acc': d_acc, 'diagnostic_preds': d_preds,
-                'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}
+                #'matched_acc': testacc, 'preds': test_preds,
+                #'mismatched_acc': mm_acc, 'mismatched_preds': mm_preds,
+                #'diagnostic_acc': d_acc, 'diagnostic_preds': d_preds,
+                'acc' : -1,
+                'ndev': len(self.data['valid'][0])
+                #, 'ntest': len(self.data['test'][0])
+                }

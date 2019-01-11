@@ -91,7 +91,7 @@ class MRPCEval(object):
                 if (ii*params.batch_size) % (20000*params.batch_size) == 0:
                     logging.info("PROGRESS (encoding): %.2f%%" % (100 * ii / n_labels))
             self.X[key] = np.vstack(enc_input)
-            self.y[key] = mylabels
+            self.y[key] = np.array(mylabels)
 
         config = {'nclasses': 2, 'seed': self.seed, 'usepytorch': params.usepytorch,
                   'cudaEfficient': True, 'nhid': params.nhid, 'noreg': False}
