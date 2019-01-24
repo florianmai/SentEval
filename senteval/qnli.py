@@ -6,7 +6,7 @@
 #
 
 '''
-(Adversarial) SQuAD - binary
+Question-Answering NLI
 '''
 from __future__ import absolute_import, division, unicode_literals
 
@@ -22,9 +22,9 @@ from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, sort_split, load_test, sort_preds
 
 
-class SQuADEval(object):
+class QNLIEval(object):
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
-        logging.debug('***** Transfer task : SQuAD Classification *****\n\n')
+        logging.debug('***** Transfer task : QNLI Classification *****\n\n')
         self.seed = seed
 
         train = sort_split(self.loadFile(os.path.join(taskpath, "train.tsv"),
@@ -112,6 +112,6 @@ class SQuADEval(object):
         clf = SplitClassifier(self.X, self.y, config)
         devacc, testacc, test_preds = clf.run()
         test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
-        logging.debug('Dev acc : {0} Test acc : {1} for SQuAD\n' .format(devacc, testacc))
+        logging.debug('Dev acc : {0} Test acc : {1} for QNLI\n' .format(devacc, testacc))
         return {'devacc': devacc, 'acc': testacc, 'preds': test_preds,
                 'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}

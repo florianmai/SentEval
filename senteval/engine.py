@@ -11,7 +11,6 @@ Generic sentence evaluation scripts wrapper
 
 '''
 from __future__ import absolute_import, division, unicode_literals
-import ipdb as pdb
 
 from senteval import utils
 from senteval.binary import CREval, MREval, MPQAEval, SUBJEval
@@ -31,12 +30,7 @@ from senteval.wnli import WNLIEval
 from senteval.anli import ANLIEval
 from senteval.probing import *
 
-ALL_TASKS = ['CR', 'MR', 'MPQA', 'SUBJ', 'SST2', 'SST5', 'TREC', 'MRPC',
-             'SICKRelatedness', 'SICKEntailment', 'STSBenchmark',
-             'SNLI', 'ImageCaptionRetrieval', 'STS12', 'STS13',
-             'STS14', 'STS15', 'STS16',
-             'MNLI', 'Quora', 'RTE', 'SQuAD', 'Warstadt', 'WNLI', 'ANLI']
-BENCHMARK_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'MNLI', 'QQP', 'RTE', 'QNLI', 'CoLA', 'WNLI']
+GLUE_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'MNLI', 'QQP', 'RTE', 'QNLI', 'CoLA', 'WNLI', 'ANLI']
 
 class SE(object):
     def __init__(self, params, batcher, prepare=None):
@@ -67,7 +61,7 @@ class SE(object):
                            'STS14', 'STS15', 'STS16',
                            'Length', 'WordContent', 'Depth', 'TopConstituents',
                            'BigramShift', 'Tense', 'SubjNumber', 'ObjNumber',
-                           'OddManOut', 'CoordinationInversion']
+                           'OddManOut', 'CoordinationInversion'] + GLUE_TASKS
 
     def eval(self, name):
         # evaluate on evaluation [name], either takes string or list of strings
@@ -77,6 +71,7 @@ class SE(object):
 
         tpath = self.params.task_path
         assert name in self.list_tasks, str(name) + ' not in ' + str(self.list_tasks)
+        max_seq_len, load_data, seed = self.params.max_seq_len, self.params.load_data, self.params.seed
 
         # Original SentEval tasks
         if name == 'CR':
@@ -94,11 +89,11 @@ class SE(object):
         elif name == 'TREC':
             self.evaluation = TRECEval(tpath + '/downstream/TREC', seed=self.params.seed)
         elif name == 'MRPC':
-            self.evaluation = MRPCEval(tpath + '/downstream/MRPC', seed=self.params.seed)
+            self.evaluation = MRPCEval(tpath + '/downstream/MRPC', load_data=load_data, seed=self.params.seed)
         elif name == 'SICKRelatedness':
             self.evaluation = SICKRelatednessEval(tpath + '/downstream/SICK', seed=self.params.seed)
         elif name == 'STSBenchmark':
-            self.evaluation = STSBenchmarkEval(tpath + '/downstream/STS/STSBenchmark', seed=self.params.seed)
+            self.evaluation = STSBenchmarkEval(tpath + '/downstream/STS/STSBenchmark', load_data=load_data, seed=self.params.seed)
         elif name == 'SICKEntailment':
             self.evaluation = SICKEntailmentEval(tpath + '/downstream/SICK', seed=self.params.seed)
         elif name == 'SNLI':
@@ -113,19 +108,19 @@ class SE(object):
         # might want to have the same interface for these tasks as above
 
         elif name == 'MNLI':
-            self.evaluation = MNLIEval(tpath + '/MNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = MNLIEval(tpath + '/glue_data/MNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'QQP':
-            self.evaluation = QQPEval(tpath + '/QQP', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = QQPEval(tpath + '/glue_data/QQP', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'RTE':
-            self.evaluation = RTEEval(tpath + '/RTE', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = RTEEval(tpath + '/glue_data/RTE', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'QNLI':
-            self.evaluation = QNLIEval(tpath + '/QNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = QNLIEval(tpath + '/glue_data/QNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'WNLI':
-            self.evaluation = WNLIEval(tpath + '/WNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = WNLIEval(tpath + '/glue_data/WNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'CoLA':
-            self.evaluation = CoLAEval(tpath + '/CoLA', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = CoLAEval(tpath + '/glue_data/CoLA', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'ANLI': # diagnostic dataset
-            self.evaluation = ANLIEval(tpath + '/ANLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+            self.evaluation = ANLIEval(tpath + '/glue_data/ANLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
 
         # Probing Tasks
         elif name == 'Length':

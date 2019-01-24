@@ -4,7 +4,6 @@ Quora Question Pairs
 from __future__ import absolute_import, division, unicode_literals
 
 import os
-import ipdb as pdb
 import copy
 import logging
 import cPickle as pkl
@@ -15,8 +14,9 @@ from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, sort_split, split_split, load_test, sort_preds
 
 
-class QuoraEval(object):
+class QQPEval(object):
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
+        ''' Class for QQP task '''
         logging.debug('***** Transfer task : Quora Question Similarity*****\n\n')
         self.seed = seed
         train = sort_split(self.loadFile(os.path.join(taskpath, 'train.tsv'),
@@ -106,7 +106,7 @@ class QuoraEval(object):
         dev_f1 = round(100*f1_score(self.y['valid'], dev_preds), 2)
         testf1 = round(100*f1_score(self.y['test'], test_preds), 2)
         test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
-        logging.debug('Dev acc : {0} Dev f1: {3} Test acc : {1} , Test f1: {2} for Quora\n' .format(devacc, testacc, testf1, dev_f1))
+        logging.debug('Dev acc : {0} Dev f1: {3} Test acc : {1} , Test f1: {2} for QQP\n' .format(devacc, testacc, testf1, dev_f1))
         return {'devacc': devacc, 'devf1': dev_f1,
                 'acc': testacc, 'f1': testf1, 'preds': test_preds,
                 'ndev': len(self.data['valid'][0]), 'ntest': len(self.data['test'][0])}

@@ -12,7 +12,6 @@ Classifiers include Logistic Regression and MLP
 
 from __future__ import absolute_import, division, unicode_literals
 
-import ipdb as pdb
 import numpy as np
 import copy
 from senteval import utils

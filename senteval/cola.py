@@ -9,7 +9,6 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import os
-import pdb
 import copy
 import codecs
 import logging
@@ -20,9 +19,9 @@ from sklearn.metrics import matthews_corrcoef
 from senteval.tools.validation import SplitClassifier
 from senteval.tools.utils import process_sentence, load_tsv, load_test, sort_split, sort_preds
 
-class WarstadtEval(object):
+class CoLAEval(object):
     def __init__(self, taskpath, max_seq_len, load_data, seed=1111):
-        logging.debug('***** Transfer task : Warstadt Acceptability*****\n\n')
+        logging.debug('***** Transfer task : CoLA *****\n\n')
         self.seed = seed
         train = sort_split(self.loadFile(os.path.join(taskpath, 'train.tsv'),
                                          max_seq_len, load_data), pair_input=0)
@@ -107,7 +106,7 @@ class WarstadtEval(object):
         dev_mcc = matthews_corrcoef(self.y['valid'], dev_preds.squeeze())
         test_mcc = matthews_corrcoef(self.y['test'], test_preds.squeeze())
         test_preds = sort_preds(test_preds.squeeze().tolist(), self.idxs['test'])
-        logging.debug('Dev acc : {0} Dev MCC : {3} Test acc : {1} Test MCC : {2} for Warstadt Acceptability Judgements\n'
+        logging.debug('Dev acc : {0} Dev MCC : {3} Test acc : {1} Test MCC : {2} for CoLA\n'
                       .format(devacc, testacc, test_mcc, dev_mcc))
         return {'devacc': devacc, 'devmcc': dev_mcc, 'acc': testacc, 'mcc': test_mcc,
                 'preds': test_preds, 'ndev': len(self.data['valid'][0]),

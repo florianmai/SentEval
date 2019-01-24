@@ -1,18 +1,17 @@
 ''' Utils to use across model runs '''
 import os
 import sys
-import ipdb as pdb
 import numpy as np
 
 PATH_SENTEVAL = '../'
 sys.path.insert(0, PATH_SENTEVAL)
-from senteval.engine import ALL_TASKS, BENCHMARK_TASKS
+from senteval.engine import GLUE_TASKS
 
 def get_tasks(task_str):
     if task_str == 'all':
-        tasks = ALL_TASKS
-    elif task_str == 'benchmark':
-        tasks = BENCHMARK_TASKS
+        tasks = [] # TODO(Alex):
+    elif task_str == 'glue':
+        tasks = GLUE_TASKS
     else:
         tasks = task_str.split(',')
     return tasks

@@ -13,7 +13,6 @@ import io
 import numpy as np
 import logging
 import argparse
-import ipdb as pdb
 
 import data
 from utils import get_tasks, write_results
@@ -25,8 +24,8 @@ else:
     PATH_PREFIX = '/beegfs/aw3272/'
 PATH_TO_SENTEVAL = '../'
 PATH_TO_DATA = '../data'
-# PATH_TO_VEC = 'glove/glove.840B.300d.txt'
-PATH_TO_VEC = 'fasttext/crawl-300d-2M.vec'
+PATH_TO_VEC = PATH_PREFIX + 'raw_data/GloVe/glove.840B.300d.txt'
+#PATH_TO_VEC = 'fasttext/crawl-300d-2M.vec'
 
 # import SentEval
 sys.path.insert(0, PATH_TO_SENTEVAL)
@@ -116,10 +115,12 @@ def main(arguments):
     parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
 
     # Model options
+    parser.add_argument("--vec_file", help="File to load vectors from", type=str)
     parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
 
     # Classifier options
-    parser.add_argument("--cls_batch_size", help="Batch size to use for classifier", type=int, default=16)
+    parser.add_argument("--cls_batch_size", help="Batch size to use for classifier", type=int,
+                        default=16)
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
