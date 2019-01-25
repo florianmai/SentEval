@@ -21,20 +21,11 @@ from utils import get_tasks, write_results
 from models import InferSent
 
 # Set PATHs
-if "cs.nyu.edu" in os.uname()[1] or 'dgx' in os.uname()[1]:
-    PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
-else:
-    PATH_PREFIX = '/beegfs/aw3272/'
-
-PATH_SENTEVAL = '../'
 PATH_TO_DATA = '../data'
-PATH_TO_W2V = 'PATH/TO/glove.840B.300d.txt'  # or crawl-300d-2M.vec for V2
-MODEL_PATH = 'infersent1.pkl'
-V = 1 # version of InferSent
-
-assert os.path.isfile(MODEL_PATH) and os.path.isfile(PATH_TO_W2V), 'Set MODEL and GloVe PATHs'
+V = 1
 
 # import senteval
+PATH_SENTEVAL = '../'
 sys.path.insert(0, PATH_SENTEVAL)
 import senteval
 
@@ -63,6 +54,8 @@ def main(arguments):
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
 
     # Model options
+    parser.add_argument("--model_checkpoint", help="Model checkpoint to use", type=str, default='')
+    parser.add_argument("--word_vec_file", help="Word vector file to use", type=str)
     parser.add_argument("--batch_size", help="Batch size to use", type=int, default=64)
 
     # Classifier options
@@ -70,9 +63,11 @@ def main(arguments):
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
-    if args.log_file:
-        fileHandler = logging.FileHandler(args.log_file)
-        logging.getLogger().addHandler(fileHandler)
+    if not os.path.exists(args.out_dir):
+        os.makedirs(args.out_dir)
+    log_file = os.path.join(args.out_dir, "results.log")
+    fileHandler = logging.FileHandler(log_file)
+    logging.getLogger().addHandler(fileHandler)
     logging.info(args)
 
     # define senteval params
@@ -86,8 +81,8 @@ def main(arguments):
     params_model = {'bsize': 64, 'word_emb_dim': 300, 'enc_lstm_dim': 2048,
                     'pool_type': 'max', 'dpout_model': 0.0, 'version': V}
     model = InferSent(params_model)
-    model.load_state_dict(torch.load(MODEL_PATH))
-    model.set_w2v_path(PATH_TO_W2V)
+    model.load_state_dict(torch.load(args.model_checkpoint))
+    model.set_w2v_path(args.word_vec_file)
 
     params_senteval['infersent'] = model.cuda()
 
@@ -95,12 +90,8 @@ def main(arguments):
     se = senteval.engine.SE(params_senteval, batcher, prepare)
     tasks = get_tasks(args.tasks)
     results = se.eval(tasks)
-    if args.out_dir:
-        write_results(results, args.out_dir)
-    if not args.log_file:
-        print(results)
-    else:
-        logging.info(results)
+    write_results(results, args.out_dir)
+    logging.info(results)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

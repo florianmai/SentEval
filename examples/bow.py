@@ -18,14 +18,9 @@ import data
 from utils import get_tasks, write_results
 
 # Set PATHs
-if "cs.nyu.edu" in os.uname()[1]:
-    PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
-else:
-    PATH_PREFIX = '/beegfs/aw3272/'
 PATH_TO_SENTEVAL = '../'
 PATH_TO_DATA = '../data'
-PATH_TO_VEC = PATH_PREFIX + 'raw_data/GloVe/glove.840B.300d.txt'
-#PATH_TO_VEC = 'fasttext/crawl-300d-2M.vec'
+PATH_TO_VEC = ''
 
 # import SentEval
 sys.path.insert(0, PATH_TO_SENTEVAL)
@@ -106,8 +101,7 @@ def main(arguments):
     parser.add_argument("--cuda", help="CUDA id to use", type=int, default=0)
     parser.add_argument("--seed", help="Random seed", type=int, default=19)
     parser.add_argument("--use_pytorch", help="1 to use PyTorch", type=int, default=1)
-    parser.add_argument("--out_dir", help="Dir to write preds to", type=str, default='')
-    parser.add_argument("--log_file", help="File to log to", type=str)
+    parser.add_argument("--out_dir", help="Dir to write preds to", type=str, default='.')
 
     # Task options
     parser.add_argument("--tasks", help="Tasks to evaluate on, as a comma separated list", type=str)
@@ -115,7 +109,7 @@ def main(arguments):
     parser.add_argument("--load_data", help="0 to read data from scratch", type=int, default=1)
 
     # Model options
-    parser.add_argument("--vec_file", help="File to load vectors from", type=str)
+    parser.add_argument("--word_vec_file", help="File to load vectors from", type=str)
     parser.add_argument("--batch_size", help="Batch size to use", type=int, default=16)
 
     # Classifier options
@@ -124,27 +118,28 @@ def main(arguments):
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
-    if args.log_file:
-        fileHandler = logging.FileHandler(args.log_file)
-        logging.getLogger().addHandler(fileHandler)
+    if not os.path.exists(args.out_dir):
+        os.makedirs(args.out_dir)
+    log_file = os.path.join(args.out_dir, "results.log")
+    fileHandler = logging.FileHandler(log_file)
+    logging.getLogger().addHandler(fileHandler)
     logging.info(args)
+
+    global PATH_TO_VEC
+    PATH_TO_VEC = args.word_vec_file
 
     # SentEval params
     params_senteval = {'task_path': PATH_TO_DATA, 'usepytorch': args.use_pytorch, 'kfold': 10,
             'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size, 'load_data': args.load_data,
             'seed': args.seed}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
-            'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
+            'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': args.cuda > 0}
 
     se = senteval.engine.SE(params_senteval, batcher, prepare)
     tasks = get_tasks(args.tasks)
     results = se.eval(tasks)
-    if args.out_dir:
-        write_results(results, args.out_dir)
-    if not args.log_file:
-        print(results)
-    else:
-        logging.info(results)
+    write_results(results, args.out_dir)
+    logging.info(results)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

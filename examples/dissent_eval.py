@@ -15,16 +15,8 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 
 # Set PATHs
-# Set PATHs
-if "cs.nyu.edu" in os.uname()[1]:
-    PATH_PREFIX = '/misc/vlgscratch4/BowmanGroup/awang/'
-else:
-    PATH_PREFIX = '/beegfs/aw3272/'
-
+PATH_TO_DATA = '../data/'
 PATH_SENTEVAL = '../'
-PATH_TO_DATA = '../data/senteval_data/'
-GLOVE_PATH = PATH_PREFIX + 'raw_data/GloVe/glove.840B.300d.txt'
-assert os.path.isfile(GLOVE_PATH), 'Set GloVe PATH'
 sys.path.insert(0, PATH_SENTEVAL)
 import senteval
 
@@ -59,8 +51,8 @@ def main(arguments):
     parser.add_argument("--max_seq_len", help="Max sequence length", type=int, default=40)
 
     # Model options
-    parser.add_argument("--outputdir", type=str, default=PATH_PREFIX + 'models/dissent/ckpts/books_8/',
-                        help="Directory containing model snapshots")
+    parser.add_argument("--word_vec_file", type=str)
+    parser.add_argument("--model_dir", type=str, help="Directory containing model snapshots")
     parser.add_argument("--outputmodelname", type=str, default='dis-model')
     parser.add_argument("--search_start_epoch", type=int, default=-1, help="Search from [start, end] epochs ")
     parser.add_argument("--search_end_epoch", type=int, default=-1, help="Search from [start, end] epochs")
@@ -71,9 +63,11 @@ def main(arguments):
 
     args = parser.parse_args(arguments)
     logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.DEBUG)
-    if args.log_file:
-        file_handler = logging.FileHandler(args.log_file)
-        logging.getLogger().addHandler(file_handler)
+    if not os.path.exists(args.out_dir):
+        os.makedirs(args.out_dir)
+    log_file = os.path.join(args.out_dir, "results.log")
+    file_handler = logging.FileHandler(log_file)
+    logging.getLogger().addHandler(file_handler)
     logging.info(args)
 
     # define senteval params
@@ -81,7 +75,7 @@ def main(arguments):
                        'max_seq_len': args.max_seq_len, 'batch_size': args.batch_size,
                        'load_data': args.load_data, 'seed': args.seed}
     params_senteval['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': args.cls_batch_size,
-                                     'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': True}
+                                     'tenacity': 5, 'epoch_size': 4, 'cudaEfficient': args.gpu_id > 0}
 
     # set gpu device
     torch.cuda.set_device(args.gpu_id)
@@ -95,7 +89,7 @@ def main(arguments):
 
     # collect number of epochs trained in directory
     model_files = filter(lambda s: args.outputmodelname + '-' in s and 'encoder' not in s,
-                         os.listdir(args.outputdir))
+                         os.listdir(args.model_dir))
     epoch_numbers = map(lambda s: s.split(args.outputmodelname + '-')[1].replace('.pickle', ''), model_files)
     # ['8', '7', '9', '3', '11', '2', '1', '5', '4', '6']
     # this is discontinuous :)
@@ -106,20 +100,15 @@ def main(arguments):
     # original setting
     if args.search_start_epoch == -1 or args.search_end_epoch == -1:
         # Load model
-        MODEL_PATH = pjoin(args.outputdir, args.outputmodelname + ".pickle.encoder")
+        MODEL_PATH = pjoin(args.model_dir, args.outputmodelname + ".pickle.encoder")
 
         params_senteval['infersent'] = torch.load(MODEL_PATH, map_location=map_locations)
-        params_senteval['infersent'].set_glove_path(GLOVE_PATH)
+        params_senteval['infersent'].set_glove_path(args.word_vec_file)
 
         se = senteval.engine.SE(params_senteval, batcher, prepare)
         results = se.eval(tasks)
-        if args.out_dir:
-            write_results(results, args.out_dir)
-        if not args.log_file:
-            print(results)
-        else:
-            logging.info(results)
-        #logging.info(results_transfer)
+        write_results(results, args.out_dir)
+        logging.info(results)
     else:
         # search through all epochs
         filtered_epoch_numbers = filter(lambda i: args.search_start_epoch <= i <= args.search_end_epoch,
@@ -131,20 +120,18 @@ def main(arguments):
         for epoch in filtered_epoch_numbers:
             logging.info("******* Epoch {} Evaluation *******".format(epoch))
             model_name = args.outputmodelname + '-{}.pickle'.format(epoch)
-            model_path = pjoin(args.outputdir, model_name)
+            model_path = pjoin(args.model_dir, model_name)
 
             dissent = torch.load(model_path, map_location=map_locations)
+            if args.gpu_id > -1:
+                dissent = dissent.cuda()
             params_senteval['infersent'] = dissent.encoder  # this might be good enough
-            params_senteval['infersent'].set_glove_path(GLOVE_PATH)
+            params_senteval['infersent'].set_glove_path(args.word_vec_file)
 
             se = senteval.SentEval(params_senteval, batcher, prepare)
             results = se.eval(tasks)
-            if args.out_dir: # TODO(Alex): need to adjust so won't overwrite previous run's predictions
-                write_results(results, args.out_dir)
-            if not args.log_file:
-                print(results)
-            else:
-                logging.info(results)
+            write_results(results, args.out_dir)
+            logging.info(results)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

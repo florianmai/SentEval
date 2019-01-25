@@ -25,12 +25,14 @@ from senteval.rank import ImageCaptionRetrievalEval
 from senteval.qqp import QQPEval
 from senteval.rte import RTEEval
 from senteval.qnli import QNLIEval
+from senteval.qnliv2 import QNLIv2Eval
 from senteval.cola import CoLAEval
 from senteval.wnli import WNLIEval
 from senteval.anli import ANLIEval
 from senteval.probing import *
 
-GLUE_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'MNLI', 'QQP', 'RTE', 'QNLI', 'CoLA', 'WNLI', 'ANLI']
+GLUE_TASKS = ['SST2', 'MRPC', 'STSBenchmark', 'MNLI', 'QQP', 'RTE', 'QNLI', 'CoLA', 'WNLI',
+	      'QNLIv2', 'ANLI']
 
 class SE(object):
     def __init__(self, params, batcher, prepare=None):
@@ -115,6 +117,8 @@ class SE(object):
             self.evaluation = RTEEval(tpath + '/glue_data/RTE', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'QNLI':
             self.evaluation = QNLIEval(tpath + '/glue_data/QNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
+        elif name == 'QNLIv2':
+            self.evaluation = QNLIv2Eval(tpath + '/glue_data/QNLIv2', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'WNLI':
             self.evaluation = WNLIEval(tpath + '/glue_data/WNLI', max_seq_len=max_seq_len, load_data=load_data, seed=seed)
         elif name == 'CoLA':

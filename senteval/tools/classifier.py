@@ -49,6 +49,11 @@ class PyTorchClassifier(object):
 
         device = torch.device('cpu') if self.cudaEfficient else torch.device('cuda')
 
+        if isinstance(trainy, list):
+            trainy = np.array(trainy)
+        if isinstance(devy, list):
+            devy = np.array(devy)
+
         trainX = torch.from_numpy(trainX).to(device, dtype=torch.float32)
         trainy = torch.from_numpy(trainy).to(device, dtype=torch.int64)
         devX = torch.from_numpy(devX).to(device, dtype=torch.float32)
@@ -131,7 +136,7 @@ class PyTorchClassifier(object):
 
     def predict(self, devX):
         self.model.eval()
-        if not isinstance(devX, torch.cuda.FloatTensor) and not self.cudaEfficient:
+        if not isinstance(devX, torch.cuda.FloatTensor) and self.cudaEfficient:
             devX = torch.FloatTensor(devX).cuda()
         elif not isinstance(devX, (torch.cuda.FloatTensor, torch.FloatTensor)):
             devX = torch.FloatTensor(devX)
