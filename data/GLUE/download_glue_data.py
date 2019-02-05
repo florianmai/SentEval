@@ -124,7 +124,7 @@ def main(arguments):
     parser.add_argument('-t', '--tasks', help='tasks to download data for as a comma separated string',
                         type=str, default='all')
     parser.add_argument('--path_to_mrpc', help='path to directory containing extracted MRPC data, msr_paraphrase_train.txt and msr_paraphrase_text.txt',
-                        type=str, default='')
+                        type=str, default='MRPC')
     args = parser.parse_args(arguments)
 
     if not os.path.isdir(args.data_dir):
