@@ -24,6 +24,7 @@ rm MSRParaphraseCorpus.msi
 python download_glue_data.py
 
 # do some renaming and merging on the data.
+rm -rf MRPC
 mv glue_data/* .
 
 # replace MRPC dataset
